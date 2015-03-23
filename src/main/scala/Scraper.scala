@@ -42,16 +42,17 @@ object Scraper extends AutoPlugin {
       () => Project.runTask(playReloaderClasspath, state.value).map(_._2).get,
       () => Project.runTask(streamsManager, state.value).map(_._2).get.toEither.right.toOption
     ) match {
-      // TODO: this classpath should be used...somewhere
       case CompileSuccess(sources, classpath) =>
+        val fullClassPath = playDependencyClasspath.value.files.map(_.toURI.toURL) ++ classpath.map(_.toURI.toURL) :+ scraperLocation
         val commonClassLoader = playCommonClassloader.value
         var appLoader: Option[ClassLoader] = None
         val delegatingLoader = new DelegatingClassLoader(commonClassLoader, buildLoader, new ApplicationClassLoaderProvider {
           def get = {
-            playReloaderClassLoader.value("reloader", (classpath.map(_.toURI.toURL) :+ scraperLocation).toArray, appLoader.get)
+            playReloaderClassLoader.value("reloader", fullClassPath.toArray, appLoader.get)
           }
         })
-      val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", (playDependencyClasspath.value.files.map(_.toURI.toURL) ++ classpath.map(_.toURI.toURL) :+ scraperLocation).toArray, delegatingLoader)
+      println(fullClassPath.map(_.toString).sorted.mkString("\n"))
+      val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", fullClassPath.toArray, delegatingLoader)
 
       val assetLoader = playAssetsClassLoader.value(loader)
       appLoader = Some(assetLoader)
