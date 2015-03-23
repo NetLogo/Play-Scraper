@@ -35,6 +35,8 @@ object Scraper extends AutoPlugin {
   override val projectSettings = Seq(
     (scrapePlay in Compile) := {
     import Play._
+    val ignore = playCompileEverything.value
+    println(ignore)
     // compile application
     // TODO: match on the result of this and only scrape if compilation succeeds
     PlayReload.compile(
@@ -54,11 +56,12 @@ object Scraper extends AutoPlugin {
       println(fullClassPath.map(_.toString).sorted.mkString("\n"))
       val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", fullClassPath.toArray, delegatingLoader)
 
+      println(playAllAssets.value)
       val assetLoader = playAssetsClassLoader.value(loader)
       appLoader = Some(assetLoader)
 
       // start scraping!
-      val serverStarter = loader.loadClass("org.nlogo.StartServer$")
+      val serverStarter = assetLoader.loadClass("org.nlogo.StartServer$")
       val ssInstance = serverStarter.getFields.head.get(null)
       val ssApply = serverStarter.getDeclaredMethod("apply", classOf[java.io.File], classOf[ClassLoader])
       ssApply.invoke(ssInstance, baseDirectory.value, assetLoader)

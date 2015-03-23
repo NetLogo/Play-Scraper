@@ -38,12 +38,15 @@ object StartServer {
     val Success(app) = appProvider.get
     println(app.routes)
     val rts = app.routes.get
+    /*
     val indexRequest = simpleGetRequest("/")
     val action = rts.routes(indexRequest).asInstanceOf[EssentialAction]
     action(indexRequest).run.onComplete {
       res => println(res)
     }
+    */
     val klassStylesheetRh = simpleGetRequest("/assets/lib/jquery/jquery.js", "text/javascript")
+    println(loader.getResource("public/stylesheets/classes.css"))
     val ksaction = rts.routes(klassStylesheetRh).asInstanceOf[EssentialAction]
     ksaction(klassStylesheetRh).run.onComplete {
       res => println(res)
