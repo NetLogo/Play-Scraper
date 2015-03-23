@@ -8,7 +8,7 @@ import play.api.libs.iteratee.Iteratee
 import play.api.DefaultApplication
 import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
 
-import scala.util.Success
+import scala.util.{ Success, Failure }
 import scala.util.Random
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -32,24 +32,38 @@ object StartServer {
     }
   }
 
-  def apply(baseDirectory: java.io.File, loader: ClassLoader): Unit = {
-    println(baseDirectory)
+  def apply(baseDirectory: java.io.File, loader: ClassLoader, targetDirectory: java.io.File): Unit = {
     val appProvider = new StaticApplication(baseDirectory)
     val Success(app) = appProvider.get
-    println(app.routes)
-    val rts = app.routes.get
-    /*
-    val indexRequest = simpleGetRequest("/")
-    val action = rts.routes(indexRequest).asInstanceOf[EssentialAction]
-    action(indexRequest).run.onComplete {
-      res => println(res)
+    val routes = app.routes.get
+
+    def contentFor(path: String): Unit = {
+      val req = simpleGetRequest(path)
+      val action = routes.routes(req).asInstanceOf[EssentialAction]
+      action(req).run.onComplete {
+        case Success(res) =>
+          val consumer = Iteratee.getChunks[Array[Byte]]
+          Iteratee.flatten(res.body(consumer)).run.onComplete
+          {
+            case Success(body) =>
+              val text = new String(body.reduceLeft(_ ++ _), "UTF-8")
+              println(res.header)
+              println(text.slice(0, 100))
+            case Failure(f) =>
+              println(s"FAILURE getting body of $path")
+          }
+        case Failure(f) =>
+          println(s"FAILURE retrieving $path")
+          println(f)
+      }
     }
-    */
-    val klassStylesheetRh = simpleGetRequest("/assets/lib/jquery/jquery.js", "text/javascript")
-    println(loader.getResource("public/stylesheets/classes.css"))
-    val ksaction = rts.routes(klassStylesheetRh).asInstanceOf[EssentialAction]
-    ksaction(klassStylesheetRh).run.onComplete {
-      res => println(res)
-    }
+
+    contentFor("/")
+    contentFor("/create-standalone")
+    contentFor("/tortoise")
+    contentFor("/model/list.json")
+    contentFor("/model/statuses.json")
+    contentFor("/netlogo-engine.js")
+    contentFor("/netlogo-agentmodel.js")
   }
 }
