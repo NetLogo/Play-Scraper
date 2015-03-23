@@ -51,7 +51,7 @@ object Scraper extends AutoPlugin {
             playReloaderClassLoader.value("reloader", (classpath.map(_.toURI.toURL) :+ scraperLocation).toArray, appLoader.get)
           }
         })
-      val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", (playDependencyClasspath.value.files.map(_.toURI.toURL) :+ scraperLocation).toArray, delegatingLoader)
+      val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", (playDependencyClasspath.value.files.map(_.toURI.toURL) ++ classpath.map(_.toURI.toURL) :+ scraperLocation).toArray, delegatingLoader)
 
       val assetLoader = playAssetsClassLoader.value(loader)
       appLoader = Some(assetLoader)
