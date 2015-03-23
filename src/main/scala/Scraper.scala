@@ -8,17 +8,10 @@ import sbt.Keys._
 import play.Play
 import play.PlayReload
 import play.runsupport.Reloader.CompileSuccess
-import play.api.Mode
-import play.api.mvc.RequestHeader
-import play.api.mvc.EssentialAction
-import play.api.libs.iteratee.Iteratee
-import play.api.DefaultApplication
 import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
 
 import scala.util.Success
-import scala.util.Random
 import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.language.postfixOps
 
