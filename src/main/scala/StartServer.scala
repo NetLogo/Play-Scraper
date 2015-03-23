@@ -1,5 +1,6 @@
 package org.nlogo
 
+import play.core.StaticApplication
 import play.api.Mode
 import play.api.mvc.RequestHeader
 import play.api.mvc.EssentialAction
@@ -31,9 +32,10 @@ object StartServer {
   }
 
   def apply(baseDirectory: java.io.File, loader: ClassLoader): Unit = {
-    val mode = loader.loadClass("play.api.Mode")
-    val devMode = mode.getMethod("Dev").invoke(mode)
-    val app = new DefaultApplication(baseDirectory, loader, null, play.api.Mode.Test).asInstanceOf[play.api.Application]
+    println(baseDirectory)
+    val appProvider = new StaticApplication(baseDirectory)
+    val Success(app) = appProvider.get
+    // val app = new DefaultApplication(baseDirectory, loader, null, play.api.Mode.Dev).asInstanceOf[play.api.Application]
     println(app)
     println(app.configuration.getString("application.router"))
     println(app.routes)
