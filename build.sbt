@@ -14,4 +14,8 @@ licenses += ("Public Domain", url("http://creativecommons.org/licenses/publicdom
 
 scalaVersion := "2.10.4"
 
+scalacOptions += "-feature"
+
 addSbtPlugin(("com.typesafe.play" % "sbt-plugin" % "2.3.8").extra("scalaVersion" -> "2.10"))
+
+libraryDependencies += "com.typesafe.play" %% "play" % "2.3.8" % "provided"
