@@ -1,7 +1,9 @@
 package org.nlogo
 
 import java.io.File
-import java.io.FileWriter
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
+import java.util.{ List => JList }
 
 import play.core.StaticApplication
 import play.api.Mode
@@ -35,7 +37,7 @@ object StartServer {
     }
   }
 
-  def apply(baseDirectory: java.io.File, loader: ClassLoader, targetDirectory: java.io.File): Unit = {
+  def apply(baseDirectory: java.io.File, loader: ClassLoader, targetDirectory: java.io.File, routesToScrape: JList[String]): Unit = {
     val appProvider = new StaticApplication(baseDirectory)
     val Success(app) = appProvider.get
     val routes = app.routes.get
@@ -61,10 +63,13 @@ object StartServer {
                     dir.mkdir
                     toFile(dir.getPath, rest.drop(1))
                 }
-              val writer = new FileWriter(toFile(targetDirectory.getPath, path))
+              val file = toFile(targetDirectory.getPath, path)
+              val fileOutputStream = new FileOutputStream(toFile(targetDirectory.getPath, path))
+              val writer = new OutputStreamWriter(fileOutputStream, "UTF-8")
               writer.write(text, 0, text.length)
               writer.flush()
               writer.close()
+              fileOutputStream.close()
             case Failure(f) =>
               println(s"FAILURE getting body of $path")
           }
@@ -74,12 +79,12 @@ object StartServer {
       }
     }
 
-    renderPage("/")
-    renderPage("/create-standalone")
-    renderPage("/tortoise")
-    renderPage("/model/list.json")
-    renderPage("/model/statuses.json")
-    renderPage("/netlogo-engine.js")
-    renderPage("/netlogo-agentmodel.js")
+    routesToScrape.foreach(renderPage)
+  }
+
+  def pathForAsset(assetName: String): String = {
+    val assetRouterClass = getClass.getClassLoader.loadClass("controllers.ReverseAssets")
+    val assetRouterInstance = getClass.getClassLoader.loadClass("controllers.routes").getField("Assets").get(null)
+    assetRouterClass.getDeclaredMethod("at", classOf[String]).invoke(assetRouterInstance, assetName).asInstanceOf[play.api.mvc.Call].url
   }
 }

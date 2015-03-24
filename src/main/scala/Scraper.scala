@@ -1,6 +1,8 @@
 package org.nlogo
 
 import java.io.File
+import java.net.URL
+import java.util.{ List => JList }
 
 import sbt.{ AutoPlugin, taskKey, settingKey, Project, Compile, Path, PathExtra }, Path._
 import sbt.Keys._
@@ -12,6 +14,7 @@ import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLo
 
 import scala.util.Success
 import scala.collection.JavaConversions._
+import scala.collection.JavaConverters.seqAsJavaListConverter
 
 import scala.language.postfixOps
 
@@ -21,6 +24,7 @@ object Scraper extends AutoPlugin {
   object autoImport {
     val scrapePlay       = taskKey[Unit]("scrape play")
     val scrapeStaticSite = settingKey[File]("directory to scrape static site into")
+    val scrapeRoutes     = settingKey[Seq[String]]("routes to be scraped")
   }
 
   import autoImport._
@@ -28,8 +32,11 @@ object Scraper extends AutoPlugin {
   val buildLoader = Scraper.getClass.getClassLoader
   val scraperLocation = Scraper.getClass.getProtectionDomain.getCodeSource.getLocation
 
+  private def urls(files: Seq[File]): Seq[URL] = files.map(_.toURI.toURL)
+
   override val projectSettings = Seq(
     scrapeStaticSite := target.value / "play-scrape",
+    scrapeRoutes     := Seq("/"),
     cleanFiles <+= scrapeStaticSite,
     (scrapePlay in Compile) := {
       import Play._
@@ -43,16 +50,8 @@ object Scraper extends AutoPlugin {
         () => Project.runTask(streamsManager, state.value).map(_._2).get.toEither.right.toOption
       ) match {
         case CompileSuccess(sources, classpath) =>
-          // copy assets
-          sbt.IO.copy(
-            playAllAssets.value flatMap {
-              case (displayPath, assetsDir) =>
-                (assetsDir ***).get.flatMap(f =>
-                  f pair rebase(assetsDir, scrapeStaticSite.value / "assets"))
-                // TODO: This is an assumption about where assets will be served from
-            })
           // setup for StartServer
-          val fullClassPath = playDependencyClasspath.value.files.map(_.toURI.toURL) ++ classpath.map(_.toURI.toURL) :+ scraperLocation
+          val fullClassPath = urls(playDependencyClasspath.value.files) ++ urls(classpath) :+ scraperLocation
           val commonClassLoader = playCommonClassloader.value
           var appLoader: Option[ClassLoader] = None
           val delegatingLoader = new DelegatingClassLoader(commonClassLoader, buildLoader, new ApplicationClassLoaderProvider {
@@ -60,21 +59,29 @@ object Scraper extends AutoPlugin {
               playReloaderClassLoader.value("reloader", fullClassPath.toArray, appLoader.get)
             }
           })
-        println(fullClassPath.map(_.toString).sorted.mkString("\n"))
         val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", fullClassPath.toArray, delegatingLoader)
 
-      val assetLoader = playAssetsClassLoader.value(loader)
-      appLoader = Some(assetLoader)
+        val assetLoader = playAssetsClassLoader.value(loader)
+        appLoader = Some(assetLoader)
 
-      // start scraping!
-      val serverStarter = assetLoader.loadClass("org.nlogo.StartServer$")
-      val ssInstance = serverStarter.getFields.head.get(null)
-      val ssApply = serverStarter.getDeclaredMethod("apply", classOf[java.io.File], classOf[ClassLoader], classOf[java.io.File])
-      ssApply.invoke(ssInstance, baseDirectory.value, assetLoader, scrapeStaticSite.value)
+        // start scraping!
+        val serverStarter = assetLoader.loadClass("org.nlogo.StartServer$")
+        val ssInstance = serverStarter.getFields.head.get(null)
+        val ssApply = serverStarter.getDeclaredMethod("apply", classOf[java.io.File], classOf[ClassLoader], classOf[java.io.File], classOf[JList[String]])
+        ssApply.invoke(ssInstance, baseDirectory.value, assetLoader, scrapeStaticSite.value, scrapeRoutes.value.asJava)
 
-      case other =>
-        println("ReloadCompile FAILED!")
-        println(other)
-    }
+        // copy assets
+        val lookupAssetPath = ((s: String) => serverStarter.getDeclaredMethod("pathForAsset", classOf[String]).invoke(ssInstance, s).asInstanceOf[String])
+        sbt.IO.copy(
+          playAllAssets.value flatMap {
+            case (displayPath, assetsDir) =>
+              (assetsDir ***).get.flatMap(f =>
+                relativeTo(assetsDir)(f).map(assetPath =>
+                  (f, scrapeStaticSite.value / lookupAssetPath(assetPath))))
+          })
+        case other =>
+          println("ReloadCompile FAILED!")
+          println(other)
+      }
     })
 }
