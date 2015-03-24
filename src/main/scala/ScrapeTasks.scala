@@ -1,7 +1,7 @@
 package org.nlogo
 
 import java.io.File
-import java.util.{ List => JList }
+import java.util.{ List => JList, Map => JMap }
 import java.lang.reflect.Method
 
 import scala.collection.JavaConversions._
@@ -19,11 +19,11 @@ object ScrapeTasks {
     (serverStarter.getDeclaredMethod(methodName, paramClasses: _*), ssInstance)
   }
 
-  def scrapeSpecifiedRoutes(applicationDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: Seq[String]) = {
-    import scala.collection.JavaConverters.seqAsJavaListConverter
+  def scrapeSpecifiedRoutes(applicationDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: Seq[String], config: Map[String, String]) = {
+    import scala.collection.JavaConverters.{ seqAsJavaListConverter, mapAsJavaMapConverter }
     val (ssApply, ssInstance) = startServerMethod(loader, "apply",
-      classOf[java.io.File], classOf[java.io.File], classOf[ClassLoader], classOf[JList[String]])
-    ssApply.invoke(ssInstance, applicationDirectory, targetDirectory, loader, routesToScrape.asJava)
+      classOf[File], classOf[File], classOf[ClassLoader], classOf[JList[String]], classOf[JMap[String, String]])
+    ssApply.invoke(ssInstance, applicationDirectory, targetDirectory, loader, routesToScrape.asJava, config.asJava)
   }
 
   def scrapeAssets(playAssets: Seq[(String, File)], targetDirectory: File, loader: ClassLoader) = {

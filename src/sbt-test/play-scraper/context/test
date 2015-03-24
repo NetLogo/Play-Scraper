@@ -1,0 +1,7 @@
+> scrapePlay
+$ exists target/play-scrape
+$ exists target/play-scrape/sub
+$ exists target/play-scrape/sub/assets
+$ exists target/play-scrape/sub/assets/images/favicon.png
+$ sleep 10
+$ exists target/play-scrape/sub/index.html

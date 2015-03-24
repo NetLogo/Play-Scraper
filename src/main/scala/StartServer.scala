@@ -3,12 +3,11 @@ package org.nlogo
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
-import java.util.{ List => JList }
+import java.util.{ List => JList, Map => JMap }
 
 import play.core.StaticApplication
-import play.api.Mode
-import play.api.mvc.RequestHeader
-import play.api.mvc.EssentialAction
+import play.api.{ Mode, Play, Configuration }
+import play.api.mvc.{ RequestHeader, EssentialAction }
 import play.api.libs.iteratee.Iteratee
 import play.api.DefaultApplication
 import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
@@ -16,6 +15,7 @@ import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLo
 import scala.util.{ Success, Failure }
 import scala.util.Random
 import scala.collection.JavaConversions._
+import scala.collection.immutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object StartServer {
@@ -37,12 +37,17 @@ object StartServer {
     }
   }
 
-  def apply(baseDirectory: java.io.File, targetDirectory: java.io.File, loader: ClassLoader, routesToScrape: JList[String]): Unit = {
-    val appProvider = new StaticApplication(baseDirectory)
-    val Success(app) = appProvider.get
+  def apply(baseDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: JList[String], additionalConfig: JMap[String, String]): Unit = {
+    val app = new DefaultApplication(baseDirectory, loader, None, Mode.Prod) {
+      override def configuration = super.configuration ++ Configuration.from(HashMap(additionalConfig.toSeq: _*))
+    }
+    Play.start(app)
     val routes = app.routes.get
 
-    def renderPage(path: String): Unit = {
+    def renderPage(requestedPath: String): Unit = {
+      val path = additionalConfig.toMap.get("application.context")
+        .map(context => s"$context$requestedPath".replaceAll("//", "/"))
+        .getOrElse(requestedPath)
       val req = simpleGetRequest(path)
       val action = routes.routes(req).asInstanceOf[EssentialAction]
       action(req).run.onComplete {

@@ -18,10 +18,11 @@ import ScrapeTasks._
 
 object Scraper extends AutoPlugin {
   object autoImport {
-    val scrapePlay       = taskKey[Unit]("scrape play")
-    val scrapeLoader     = taskKey[ClassLoader]("classLoader to use when scraping play")
-    val scrapeStaticSite = settingKey[File]("directory to scrape static site into") // TODO: This is a bad name
-    val scrapeRoutes     = settingKey[Seq[String]]("routes to be scraped")
+    val scrapePlay    = taskKey[Unit]("scrape play")
+    val scrapeLoader  = taskKey[ClassLoader]("classLoader to use when scraping play")
+    val scrapeContext = settingKey[String]("subdirectory in which to put generated files")
+    val scrapeTarget  = settingKey[File]("directory to scrape static site into")
+    val scrapeRoutes  = settingKey[Seq[String]]("routes to be scraped")
   }
 
   import autoImport._
@@ -44,10 +45,11 @@ object Scraper extends AutoPlugin {
   }
 
   override val projectSettings = Seq(
-    scrapeStaticSite := target.value / "play-scrape",
-    scrapeRoutes     := Seq("/"),
-    cleanFiles       <+= scrapeStaticSite,
-    scrapeLoader     := {
+    scrapeTarget  := target.value / "play-scrape",
+    scrapeContext := "",
+    scrapeRoutes  := Seq("/"),
+    cleanFiles    <+= scrapeTarget,
+    scrapeLoader  := {
       import Play._
       compilePlay(state.value) match {
         case CompileSuccess(sources, classpath) =>
@@ -65,7 +67,8 @@ object Scraper extends AutoPlugin {
     },
     (scrapePlay in Compile) := {
       import Play.playAllAssets
-      scrapeSpecifiedRoutes(baseDirectory.value, scrapeStaticSite.value, scrapeLoader.value, scrapeRoutes.value)
-      scrapeAssets(playAllAssets.value, scrapeStaticSite.value, scrapeLoader.value)
+      val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("application.context" -> scrapeContext.value)
+      scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, customSettings)
+      scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value)
     })
 }
