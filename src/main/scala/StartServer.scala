@@ -1,5 +1,8 @@
 package org.nlogo
 
+import java.io.File
+import java.io.FileWriter
+
 import play.core.StaticApplication
 import play.api.Mode
 import play.api.mvc.RequestHeader
@@ -37,7 +40,7 @@ object StartServer {
     val Success(app) = appProvider.get
     val routes = app.routes.get
 
-    def contentFor(path: String): Unit = {
+    def renderPage(path: String): Unit = {
       val req = simpleGetRequest(path)
       val action = routes.routes(req).asInstanceOf[EssentialAction]
       action(req).run.onComplete {
@@ -47,8 +50,21 @@ object StartServer {
           {
             case Success(body) =>
               val text = new String(body.reduceLeft(_ ++ _), "UTF-8")
-              println(res.header)
-              println(text.slice(0, 100))
+              def toFile(parentDirPath: String, path: String): File =
+                path.span(_ != '/') match {
+                  case ("", "/") =>
+                    new File(parentDirPath, "index.html")
+                  case (filename, "") =>
+                    new File(parentDirPath, filename)
+                  case (filename, rest) =>
+                    val dir = new File(parentDirPath + File.separatorChar + filename)
+                    dir.mkdir
+                    toFile(dir.getPath, rest.drop(1))
+                }
+              val writer = new FileWriter(toFile(targetDirectory.getPath, path))
+              writer.write(text, 0, text.length)
+              writer.flush()
+              writer.close()
             case Failure(f) =>
               println(s"FAILURE getting body of $path")
           }
@@ -58,12 +74,12 @@ object StartServer {
       }
     }
 
-    contentFor("/")
-    contentFor("/create-standalone")
-    contentFor("/tortoise")
-    contentFor("/model/list.json")
-    contentFor("/model/statuses.json")
-    contentFor("/netlogo-engine.js")
-    contentFor("/netlogo-agentmodel.js")
+    renderPage("/")
+    renderPage("/create-standalone")
+    renderPage("/tortoise")
+    renderPage("/model/list.json")
+    renderPage("/model/statuses.json")
+    renderPage("/netlogo-engine.js")
+    renderPage("/netlogo-agentmodel.js")
   }
 }

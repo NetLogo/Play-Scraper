@@ -30,6 +30,7 @@ object Scraper extends AutoPlugin {
 
   override val projectSettings = Seq(
     scrapeStaticSite := target.value / "play-scrape",
+    cleanFiles <+= scrapeStaticSite,
     (scrapePlay in Compile) := {
       import Play._
       val ignore = playCompileEverything.value
@@ -47,7 +48,8 @@ object Scraper extends AutoPlugin {
             playAllAssets.value flatMap {
               case (displayPath, assetsDir) =>
                 (assetsDir ***).get.flatMap(f =>
-                  f pair rebase(assetsDir, scrapeStaticSite.value / displayPath.dropRight(1)))
+                  f pair rebase(assetsDir, scrapeStaticSite.value / "assets"))
+                // TODO: This is an assumption about where assets will be served from
             })
           // setup for StartServer
           val fullClassPath = playDependencyClasspath.value.files.map(_.toURI.toURL) ++ classpath.map(_.toURI.toURL) :+ scraperLocation
@@ -61,7 +63,6 @@ object Scraper extends AutoPlugin {
         println(fullClassPath.map(_.toString).sorted.mkString("\n"))
         val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", fullClassPath.toArray, delegatingLoader)
 
-      println(playAllAssets.value)
       val assetLoader = playAssetsClassLoader.value(loader)
       appLoader = Some(assetLoader)
 
