@@ -37,7 +37,7 @@ object StartServer {
     }
   }
 
-  def apply(baseDirectory: java.io.File, loader: ClassLoader, targetDirectory: java.io.File, routesToScrape: JList[String]): Unit = {
+  def apply(baseDirectory: java.io.File, targetDirectory: java.io.File, loader: ClassLoader, routesToScrape: JList[String]): Unit = {
     val appProvider = new StaticApplication(baseDirectory)
     val Success(app) = appProvider.get
     val routes = app.routes.get

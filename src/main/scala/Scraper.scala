@@ -4,26 +4,23 @@ import java.io.File
 import java.net.URL
 import java.util.{ List => JList }
 
-import sbt.{ AutoPlugin, taskKey, settingKey, Project, Compile, Path, PathExtra }, Path._
+import sbt.{ AutoPlugin, taskKey, settingKey, Project, Compile, State, Path }, Path._
 import sbt.Keys._
 
 import play.Play
 import play.PlayReload
-import play.runsupport.Reloader.CompileSuccess
+import play.runsupport.Reloader.{ CompileSuccess, CompileResult, CompileFailure }
 import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
 
-import scala.util.Success
 import scala.collection.JavaConversions._
-import scala.collection.JavaConverters.seqAsJavaListConverter
 
-import scala.language.postfixOps
-
-import StartServer.simpleGetRequest
+import ScrapeTasks._
 
 object Scraper extends AutoPlugin {
   object autoImport {
     val scrapePlay       = taskKey[Unit]("scrape play")
-    val scrapeStaticSite = settingKey[File]("directory to scrape static site into")
+    val scrapeLoader     = taskKey[ClassLoader]("classLoader to use when scraping play")
+    val scrapeStaticSite = settingKey[File]("directory to scrape static site into") // TODO: This is a bad name
     val scrapeRoutes     = settingKey[Seq[String]]("routes to be scraped")
   }
 
@@ -34,54 +31,41 @@ object Scraper extends AutoPlugin {
 
   private def urls(files: Seq[File]): Seq[URL] = files.map(_.toURI.toURL)
 
+  private def delegateLoader(commonClassLoader: ClassLoader, buildLoader: ClassLoader, reloaderThunk: () => ClassLoader): ClassLoader =
+    new DelegatingClassLoader(commonClassLoader, buildLoader, new ApplicationClassLoaderProvider { def get = reloaderThunk() })
+
+  private def compilePlay(currentState: State): CompileResult = {
+    import Play._
+    Project.runTask(playCompileEverything, currentState)
+    PlayReload.compile(
+      () => Project.runTask(playReload, currentState).map(_._2).get,
+      () => Project.runTask(playReloaderClasspath, currentState).map(_._2).get,
+      () => Project.runTask(streamsManager, currentState).map(_._2).get.toEither.right.toOption)
+  }
+
   override val projectSettings = Seq(
     scrapeStaticSite := target.value / "play-scrape",
     scrapeRoutes     := Seq("/"),
-    cleanFiles <+= scrapeStaticSite,
-    (scrapePlay in Compile) := {
+    cleanFiles       <+= scrapeStaticSite,
+    scrapeLoader     := {
       import Play._
-      val ignore = playCompileEverything.value
-
-      // compile application
-      // TODO: match on the result of this and only scrape if compilation succeeds
-      PlayReload.compile(
-        () => Project.runTask(playReload, state.value).map(_._2).get,
-        () => Project.runTask(playReloaderClasspath, state.value).map(_._2).get,
-        () => Project.runTask(streamsManager, state.value).map(_._2).get.toEither.right.toOption
-      ) match {
+      compilePlay(state.value) match {
         case CompileSuccess(sources, classpath) =>
-          // setup for StartServer
+          // For more information, see
+          // https://github.com/playframework/playframework/blob/bc38516056b458bdc41818e7395815366c5e119d/framework/src/run-support/src/main/scala/play/runsupport/Reloader.scala#L127-L167
           val fullClassPath = urls(playDependencyClasspath.value.files) ++ urls(classpath) :+ scraperLocation
-          val commonClassLoader = playCommonClassloader.value
-          var appLoader: Option[ClassLoader] = None
-          val delegatingLoader = new DelegatingClassLoader(commonClassLoader, buildLoader, new ApplicationClassLoaderProvider {
-            def get = {
-              playReloaderClassLoader.value("reloader", fullClassPath.toArray, appLoader.get)
-            }
-          })
-        val loader = playDependencyClassLoader.value("PlayDependencyClassLoader", fullClassPath.toArray, delegatingLoader)
-
-        val assetLoader = playAssetsClassLoader.value(loader)
-        appLoader = Some(assetLoader)
-
-        // start scraping!
-        val serverStarter = assetLoader.loadClass("org.nlogo.StartServer$")
-        val ssInstance = serverStarter.getFields.head.get(null)
-        val ssApply = serverStarter.getDeclaredMethod("apply", classOf[java.io.File], classOf[ClassLoader], classOf[java.io.File], classOf[JList[String]])
-        ssApply.invoke(ssInstance, baseDirectory.value, assetLoader, scrapeStaticSite.value, scrapeRoutes.value.asJava)
-
-        // copy assets
-        val lookupAssetPath = ((s: String) => serverStarter.getDeclaredMethod("pathForAsset", classOf[String]).invoke(ssInstance, s).asInstanceOf[String])
-        sbt.IO.copy(
-          playAllAssets.value flatMap {
-            case (displayPath, assetsDir) =>
-              (assetsDir ***).get.flatMap(f =>
-                relativeTo(assetsDir)(f).map(assetPath =>
-                  (f, scrapeStaticSite.value / lookupAssetPath(assetPath))))
-          })
-        case other =>
-          println("ReloadCompile FAILED!")
-          println(other)
+          lazy val commonClassLoader = playCommonClassloader.value
+          lazy val delegatingLoader = delegateLoader(commonClassLoader, buildLoader,
+            () => playReloaderClassLoader.value("reloader", fullClassPath.toArray, appLoader))
+          lazy val depLoader = playDependencyClassLoader.value("PlayDependencyClassLoader", fullClassPath.toArray, delegatingLoader)
+          lazy val appLoader: ClassLoader = playAssetsClassLoader.value(depLoader)
+          appLoader
+        case CompileFailure(playException) => throw playException
       }
+    },
+    (scrapePlay in Compile) := {
+      import Play.playAllAssets
+      scrapeSpecifiedRoutes(baseDirectory.value, scrapeStaticSite.value, scrapeLoader.value, scrapeRoutes.value)
+      scrapeAssets(playAllAssets.value, scrapeStaticSite.value, scrapeLoader.value)
     })
 }
