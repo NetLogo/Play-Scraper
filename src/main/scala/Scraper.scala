@@ -68,7 +68,7 @@ object Scraper extends AutoPlugin {
     (scrapePlay in Compile) := {
       import Play.playAllAssets
       val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("application.context" -> scrapeContext.value)
+      scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value, customSettings)
       scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, customSettings)
-      scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value)
     })
 }

@@ -26,7 +26,7 @@ object ScrapeTasks {
     ssApply.invoke(ssInstance, applicationDirectory, targetDirectory, loader, routesToScrape.asJava, config.asJava)
   }
 
-  def scrapeAssets(playAssets: Seq[(String, File)], targetDirectory: File, loader: ClassLoader) = {
+  def scrapeAssets(playAssets: Seq[(String, File)], targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
     val (ssPathForAsset, ssInstance) = startServerMethod(loader, "pathForAsset", classOf[String])
     val lookupAssetPath = ((s: String) => ssPathForAsset.invoke(ssInstance, s).asInstanceOf[String])
     copyFiles(
@@ -34,7 +34,7 @@ object ScrapeTasks {
         case (displayPath, assetsDir) =>
           (assetsDir ***).get.flatMap(f =>
               relativeTo(assetsDir)(f).map(assetPath =>
-                  (f, targetDirectory / lookupAssetPath(assetPath))))
+                  (f, targetDirectory / customSettings.getOrElse("application.context", "") / lookupAssetPath(assetPath))))
       })
   }
 }

@@ -6,17 +6,18 @@ import java.io.OutputStreamWriter
 import java.util.{ List => JList, Map => JMap }
 
 import play.core.StaticApplication
-import play.api.{ Mode, Play, Configuration }
+import play.api.{ Mode, Play, Configuration, Application }
 import play.api.mvc.{ RequestHeader, EssentialAction }
 import play.api.libs.iteratee.Iteratee
 import play.api.DefaultApplication
 import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
 
-import scala.util.{ Success, Failure }
-import scala.util.Random
+import scala.util.{ Random, Success, Failure }
 import scala.collection.JavaConversions._
 import scala.collection.immutable.HashMap
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ duration, ExecutionContext, Await, Future },
+  ExecutionContext.Implicits.global,
+  duration.Duration
 
 object StartServer {
   def simpleGetRequest(_path: String, _accept: String = "*/*"): RequestHeader = {
@@ -42,38 +43,27 @@ object StartServer {
       override def configuration = super.configuration ++ Configuration.from(HashMap(additionalConfig.toSeq: _*))
     }
     Play.start(app)
-    val routes = app.routes.get
-
-    def renderPage(requestedPath: String): Unit = {
-      println("RENDERING")
-      println(requestedPath)
-      val path = additionalConfig.toMap.get("application.context")
-        .map(context => s"$context$requestedPath".replaceAll("//", "/"))
-        .getOrElse(requestedPath)
-      val req = simpleGetRequest(path)
-      val action = routes.routes(req).asInstanceOf[EssentialAction]
-      action(req).run.onComplete {
-        case Success(res) =>
-          val consumer = Iteratee.getChunks[Array[Byte]]
-          Iteratee.flatten(res.body(consumer)).run.onComplete
-          {
-            case Success(body) =>
-              val text = new String(body.reduceLeft(_ ++ _), "UTF-8")
-              writeToFile(targetDirectory.getPath, path,
-                (writer: OutputStreamWriter) => writer.write(text, 0, text.length))
-            case Failure(f) =>
-              println(s"FAILURE getting body of $path")
-          }
-        case Failure(f) =>
-          println(s"FAILURE retrieving $path")
-          println(f)
-      }
-    }
-
-    routesToScrape.foreach(renderPage)
+    Await.ready(
+      Future.traverse(routesToScrape.toSeq.map(contextualizePath(app)))(
+        path => renderPage(app, path).map(body => writeToFile(pathToFile(targetDirectory.getPath, path), body))),
+      Duration.Inf)
   }
 
-  private def writeToFile(parentDirPath: String, path: String, withFile: OutputStreamWriter => Unit): Unit = {
+  private def contextualizePath(app: Application)(requestedPath: String) =
+    app.configuration.getString("application.context")
+      .map(context => s"$context$requestedPath".replaceAll("//", "/"))
+      .getOrElse(requestedPath)
+
+  private def renderPage(app: Application, path: String): Future[String] = {
+    val req = simpleGetRequest(path)
+    val action = app.routes.get.routes(req).asInstanceOf[EssentialAction]
+    val fileWritingIteratee = Iteratee
+      .fold[Array[Byte], Array[Byte]](Array[Byte]())(_ ++ _)
+      .map(new String(_, "UTF-8"))
+    action(req).flatMapM(result => result.body(fileWritingIteratee)).run
+  }
+
+  private def pathToFile(parentDirPath: String, path: String): File = {
     def toFile(parentDirPath: String, path: String): File =
       path.span(_ != '/') match {
         case (filename, "") =>
@@ -81,18 +71,20 @@ object StartServer {
           if (file.isDirectory) new File(file.getPath, "index.html") else file
         case (filename, rest) =>
           val dir = new File(parentDirPath + File.separatorChar + filename)
-          dir.mkdir
+          if (! dir.isDirectory) dir.mkdir
           toFile(dir.getPath, rest.drop(1))
       }
-    val file = toFile(parentDirPath, path.drop(1))
+    toFile(parentDirPath, path.drop(1))
+  }
+
+  private def writeToFile(file: File, text: String): Unit = {
     val fileOutputStream = new FileOutputStream(file)
     val writer = new OutputStreamWriter(fileOutputStream, "UTF-8")
-    withFile(writer)
+    writer.write(text, 0, text.length)
     writer.flush()
     writer.close()
     fileOutputStream.close()
   }
-
 
   def pathForAsset(assetName: String): String = {
     val assetRouterClass = getClass.getClassLoader.loadClass("controllers.ReverseAssets")
