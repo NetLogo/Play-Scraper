@@ -45,6 +45,8 @@ object StartServer {
     val routes = app.routes.get
 
     def renderPage(requestedPath: String): Unit = {
+      println("RENDERING")
+      println(requestedPath)
       val path = additionalConfig.toMap.get("application.context")
         .map(context => s"$context$requestedPath".replaceAll("//", "/"))
         .getOrElse(requestedPath)
@@ -57,24 +59,8 @@ object StartServer {
           {
             case Success(body) =>
               val text = new String(body.reduceLeft(_ ++ _), "UTF-8")
-              def toFile(parentDirPath: String, path: String): File =
-                path.span(_ != '/') match {
-                  case ("", "/") =>
-                    new File(parentDirPath, "index.html")
-                  case (filename, "") =>
-                    new File(parentDirPath, filename)
-                  case (filename, rest) =>
-                    val dir = new File(parentDirPath + File.separatorChar + filename)
-                    dir.mkdir
-                    toFile(dir.getPath, rest.drop(1))
-                }
-              val file = toFile(targetDirectory.getPath, path)
-              val fileOutputStream = new FileOutputStream(toFile(targetDirectory.getPath, path))
-              val writer = new OutputStreamWriter(fileOutputStream, "UTF-8")
-              writer.write(text, 0, text.length)
-              writer.flush()
-              writer.close()
-              fileOutputStream.close()
+              writeToFile(targetDirectory.getPath, path,
+                (writer: OutputStreamWriter) => writer.write(text, 0, text.length))
             case Failure(f) =>
               println(s"FAILURE getting body of $path")
           }
@@ -86,6 +72,27 @@ object StartServer {
 
     routesToScrape.foreach(renderPage)
   }
+
+  private def writeToFile(parentDirPath: String, path: String, withFile: OutputStreamWriter => Unit): Unit = {
+    def toFile(parentDirPath: String, path: String): File =
+      path.span(_ != '/') match {
+        case (filename, "") =>
+          val file = new File(parentDirPath, filename)
+          if (file.isDirectory) new File(file.getPath, "index.html") else file
+        case (filename, rest) =>
+          val dir = new File(parentDirPath + File.separatorChar + filename)
+          dir.mkdir
+          toFile(dir.getPath, rest.drop(1))
+      }
+    val file = toFile(parentDirPath, path.drop(1))
+    val fileOutputStream = new FileOutputStream(file)
+    val writer = new OutputStreamWriter(fileOutputStream, "UTF-8")
+    withFile(writer)
+    writer.flush()
+    writer.close()
+    fileOutputStream.close()
+  }
+
 
   def pathForAsset(assetName: String): String = {
     val assetRouterClass = getClass.getClassLoader.loadClass("controllers.ReverseAssets")
