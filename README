@@ -19,3 +19,9 @@ You will then have access to the `scrapePlay` sbt task, which will scrape the ro
 ## How Do I Build It?
 
 Use sbt. Test it using the `scripted` task.
+
+## Terms of Use
+
+[![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png)](http://creativecommons.org/publicdomain/zero/1.0/)
+
+The Play Scraper plugin is in the public domain.  To the extent possible under law, Uri Wilensky has waived all copyright and related or neighboring rights.
