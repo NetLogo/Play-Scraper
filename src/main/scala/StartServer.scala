@@ -5,12 +5,14 @@ import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.util.{ List => JList, Map => JMap }
 
-import play.core.StaticApplication
 import play.api.{ Mode, Play, Configuration, Application }
 import play.api.mvc.{ RequestHeader, EssentialAction }
 import play.api.libs.iteratee.Iteratee
 import play.api.DefaultApplication
-import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
+import play.runsupport.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
+import play.api.http.HeaderNames.ACCEPT
+import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.inject.guice.GuiceableModule
 
 import scala.util.{ Random, Success, Failure }
 import scala.collection.JavaConversions._
@@ -22,26 +24,28 @@ import scala.concurrent.{ duration, ExecutionContext, Await, Future },
 object StartServer {
   def simpleGetRequest(_path: String, _accept: String = "*/*"): RequestHeader = {
     new RequestHeader {
-      def headers = new play.api.mvc.Headers {
-        import play.api.http.HeaderNames._
-        val data = Seq[(String, Seq[String])](ACCEPT -> Seq(_accept))
-      }
-      def id = Random.nextInt
-      def method = "GET"
-      def path = _path
-      def queryString = Map[String, Seq[String]]()
+      def headers       = new play.api.mvc.Headers(Seq(ACCEPT -> _accept))
+      def id            = Random.nextInt
+      def method        = "GET"
+      def path          = _path
+      def queryString   = Map[String, Seq[String]]()
       def remoteAddress = "0.0.0.0"
-      def secure = false
-      def tags = Map[String, String]()
-      def uri = _path
-      def version = "HTTP/1.1"
+      def secure        = false
+      def tags          = Map[String, String]()
+      def uri           = _path
+      def version       = "HTTP/1.1"
     }
   }
 
   def apply(baseDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: JList[String], additionalConfig: JMap[String, String]): Unit = {
-    val app = new DefaultApplication(baseDirectory, loader, None, Mode.Prod) {
-      override def configuration = super.configuration ++ Configuration.from(HashMap(additionalConfig.toSeq: _*))
-    }
+    val extraConfig = Configuration.from(HashMap(additionalConfig.toSeq: _*))
+    val app = new GuiceApplicationBuilder()
+      .load((env, conf) => GuiceableModule.loadModules(env, conf))
+      .loadConfig(env => Configuration.load(env) ++ extraConfig)
+      .in(baseDirectory)
+      .in(loader)
+      .in(Mode.Prod)
+      .build
     Play.start(app)
     Await.ready(
       Future.traverse(routesToScrape.toSeq.map(contextualizePath(app)))(
@@ -56,7 +60,8 @@ object StartServer {
 
   private def renderPage(app: Application, path: String): Future[String] = {
     val req = simpleGetRequest(path)
-    val action = app.routes.get.routes(req).asInstanceOf[EssentialAction]
+    val (_, handler) = app.requestHandler.handlerForRequest(req)
+    val action = handler.asInstanceOf[EssentialAction]
     val fileWritingIteratee = Iteratee
       .fold[Array[Byte], Array[Byte]](Array[Byte]())(_ ++ _)
       .map(new String(_, "UTF-8"))

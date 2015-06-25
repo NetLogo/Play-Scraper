@@ -6,7 +6,7 @@ name := "play-scraper"
 
 organization := "org.nlogo"
 
-version := "0.1"
+version := "0.2"
 
 isSnapshot := true
 
@@ -14,8 +14,8 @@ licenses += ("Public Domain", url("http://creativecommons.org/licenses/publicdom
 
 scalaVersion := "2.10.4"
 
-scalacOptions += "-feature"
+scalacOptions ++= Seq("-feature", "-deprecation")
 
-addSbtPlugin(("com.typesafe.play" % "sbt-plugin" % "2.3.8").extra("scalaVersion" -> "2.10"))
+addSbtPlugin(("com.typesafe.play" % "sbt-plugin" % "2.4.0").extra("scalaVersion" -> "2.10"))
 
-libraryDependencies += "com.typesafe.play" %% "play" % "2.3.8" % "provided"
+libraryDependencies += "com.typesafe.play" %% "play" % "2.4.0"

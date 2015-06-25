@@ -8,9 +8,12 @@ import sbt.{ AutoPlugin, taskKey, settingKey, Project, Compile, State, Path }, P
 import sbt.Keys._
 
 import play.Play
-import play.PlayReload
+import play.core.Build
+import play.sbt.run.PlayReload
+import play.sbt.PlayInternalKeys.{ playAllAssets, playAssetsClassLoader, playCommonClassloader, playCompileEverything,
+  playDependencyClassLoader, playDependencyClasspath, playReload, playReloaderClassLoader, playReloaderClasspath }
 import play.runsupport.Reloader.{ CompileSuccess, CompileResult, CompileFailure }
-import play.core.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
+import play.runsupport.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
 
 import scala.collection.JavaConversions._
 
@@ -33,7 +36,7 @@ object Scraper extends AutoPlugin {
   private def urls(files: Seq[File]): Seq[URL] = files.map(_.toURI.toURL)
 
   private def delegateLoader(commonClassLoader: ClassLoader, buildLoader: ClassLoader, reloaderThunk: () => ClassLoader): ClassLoader =
-    new DelegatingClassLoader(commonClassLoader, buildLoader, new ApplicationClassLoaderProvider { def get = reloaderThunk() })
+    new DelegatingClassLoader(commonClassLoader, Build.sharedClasses, buildLoader, new ApplicationClassLoaderProvider { def get = reloaderThunk() })
 
   private def compilePlay(currentState: State): CompileResult = {
     import Play._
@@ -66,7 +69,6 @@ object Scraper extends AutoPlugin {
       }
     },
     (scrapePlay in Compile) := {
-      import Play.playAllAssets
       val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("application.context" -> scrapeContext.value)
       scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value, customSettings)
       scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, customSettings)
