@@ -1,10 +1,14 @@
 package org.nlogo
 
+import
+  com.amazonaws.auth.{ AWSCredentialsProvider, EnvironmentVariableCredentialsProvider, profile },
+    profile.ProfileCredentialsProvider
+
 import java.io.File
 import java.net.URL
 import java.util.{ List => JList }
 
-import sbt.{ AutoPlugin, taskKey, settingKey, Project, Compile, State, Path }, Path._
+import sbt.{ AutoPlugin, Def, taskKey, settingKey, Project, Compile, State, Path }, Path._
 import sbt.Keys._
 
 import play.Play
@@ -21,11 +25,15 @@ import ScrapeTasks._
 
 object Scraper extends AutoPlugin {
   object autoImport {
-    val scrapePlay    = taskKey[Unit]("scrape play")
-    val scrapeLoader  = taskKey[ClassLoader]("classLoader to use when scraping play")
-    val scrapeContext = settingKey[String]("subdirectory in which to put generated files")
-    val scrapeTarget  = settingKey[File]("directory to scrape static site into")
-    val scrapeRoutes  = settingKey[Seq[String]]("routes to be scraped")
+    val scrapePlay                  = taskKey[Unit]("scrape play")
+    val scrapeUpload                = taskKey[Unit]("upload scraped site")
+    val scrapeLoader                = taskKey[ClassLoader]("classLoader to use when scraping play")
+    val scrapeContext               = settingKey[String]("subdirectory in which to put generated files")
+    val scrapeTarget                = settingKey[File]("directory to scrape static site into")
+    val scrapeRoutes                = settingKey[Seq[String]]("routes to be scraped")
+    val scrapePublishCredential     = settingKey[AWSCredentialsProvider]("scrape publication credential")
+    val scrapePublishBucketID       = settingKey[Option[String]]("scrape publication bucket ID")
+    val scrapePublishDistributionID = settingKey[Option[String]]("scrape publication distribution ID")
   }
 
   import autoImport._
@@ -47,12 +55,38 @@ object Scraper extends AutoPlugin {
       () => Project.runTask(streamsManager, currentState).map(_._2).get.toEither.right.toOption)
   }
 
+  object credentials {
+    def fromEnvironmentVariables =
+      new EnvironmentVariableCredentialsProvider()
+
+    def fromCredentialsProfile(name: String) =
+      new ProfileCredentialsProvider(name)
+  }
+
   override val projectSettings = Seq(
-    scrapeTarget  := target.value / "play-scrape",
-    scrapeContext := "",
-    scrapeRoutes  := Seq("/"),
-    cleanFiles    <+= scrapeTarget,
-    scrapeLoader  := {
+    scrapeTarget        := target.value / "play-scrape",
+    scrapeUpload        <<= Def.taskDyn {
+      (for {
+        bucketID <- scrapePublishBucketID.value
+        distributionID = scrapePublishDistributionID.value
+      } yield (Def.task {
+          StaticSiteUploader.deploy(
+            scrapePublishCredential.value,
+            scrapeTarget.value,
+            bucketID,
+            distributionID
+          )
+        })).getOrElse(Def.task {
+          sys.error("set scrapePublishBucketID to publish")
+        })
+    },
+    scrapeContext       := "",
+    scrapeRoutes        := Seq("/"),
+    cleanFiles          <+= scrapeTarget,
+    scrapePublishCredential     := credentials.fromEnvironmentVariables,
+    scrapePublishBucketID       := None,
+    scrapePublishDistributionID := None,
+    scrapeLoader        := {
       import Play._
       compilePlay(state.value) match {
         case CompileSuccess(sources, classpath) =>

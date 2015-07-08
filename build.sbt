@@ -6,7 +6,7 @@ name := "play-scraper"
 
 organization := "org.nlogo"
 
-version := "0.2"
+version := "0.3-M1"
 
 isSnapshot := true
 
@@ -18,4 +18,8 @@ scalacOptions ++= Seq("-feature", "-deprecation")
 
 addSbtPlugin(("com.typesafe.play" % "sbt-plugin" % "2.4.0").extra("scalaVersion" -> "2.10"))
 
-libraryDependencies += "com.typesafe.play" %% "play" % "2.4.0"
+libraryDependencies ++= Seq(
+  "com.typesafe.play" %% "play" % "2.4.0",
+  "com.amazonaws" % "aws-java-sdk-cloudfront" % "1.10.2",
+  "com.amazonaws" % "aws-java-sdk-s3" % "1.10.2"
+)
