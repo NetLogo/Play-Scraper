@@ -23,7 +23,7 @@ import scala.collection.JavaConversions._
 
 import ScrapeTasks._
 
-object Scraper extends AutoPlugin {
+object PlayScrapePlugin extends AutoPlugin {
   object autoImport {
     val scrapePlay                  = taskKey[Unit]("scrape play")
     val scrapeUpload                = taskKey[Unit]("upload scraped site")
@@ -39,8 +39,8 @@ object Scraper extends AutoPlugin {
 
   import autoImport._
 
-  val buildLoader = Scraper.getClass.getClassLoader
-  val scraperLocation = Scraper.getClass.getProtectionDomain.getCodeSource.getLocation
+  val buildLoader = PlayScrapePlugin.getClass.getClassLoader
+  val scraperLocation = PlayScrapePlugin.getClass.getProtectionDomain.getCodeSource.getLocation
 
   private def urls(files: Seq[File]): Seq[URL] = files.map(_.toURI.toURL)
 
