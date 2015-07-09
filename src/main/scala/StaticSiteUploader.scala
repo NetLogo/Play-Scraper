@@ -32,7 +32,7 @@ object StaticSiteUploader {
     lazy val allPutRequests =
       recursiveFileEnumeration(targetDirectory)
         .filter(excludeFiles)
-        .map(putRequest(bucketId))
+        .map(putRequest(bucketId, fileToKey(targetDirectory)))
 
     upload(allPutRequests, credential)
 
@@ -77,7 +77,8 @@ object StaticSiteUploader {
     hm
   }
 
-  def fileToKey(f: File): String = f.getPath.split("/").drop(2).mkString("/")
+  def fileToKey(targetDirectory: File)(f: File): String =
+    f.getCanonicalPath.drop(s"${targetDirectory.getCanonicalPath}/".length)
 
   val publiclyReadable: AccessControlList = {
     val acl = new AccessControlList()
@@ -93,8 +94,8 @@ object StaticSiteUploader {
 
   val excludeFiles: (File) => Boolean = (file: File) => ! file.getName.startsWith(".")
 
-  def putRequest(bucketName: String)(f: File): PutObjectRequest = {
-    val pr = new PutObjectRequest(bucketName, fileToKey(f), f)
+  def putRequest(bucketName: String, generateKey: File => String)(f: File): PutObjectRequest = {
+    val pr = new PutObjectRequest(bucketName, generateKey(f), f)
     if (f.getName.endsWith("html") || ! f.getName.contains('.'))
       pr.withMetadata(htmlMetadata).withAccessControlList(publiclyReadable)
     else
