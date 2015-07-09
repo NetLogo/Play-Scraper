@@ -37,7 +37,13 @@ object StartServer {
     }
   }
 
-  def apply(baseDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: JList[String], additionalConfig: JMap[String, String]): Unit = {
+  def apply(
+    baseDirectory: File,
+    targetDirectory: File,
+    loader: ClassLoader,
+    routesToScrape: JList[String],
+    additionalConfig: JMap[String, String],
+    scrapeDelay: java.lang.Integer): Unit = {
     val extraConfig = Configuration.from(HashMap(additionalConfig.toSeq: _*))
     val app = new GuiceApplicationBuilder()
       .load((env, conf) => GuiceableModule.loadModules(env, conf))
@@ -47,6 +53,7 @@ object StartServer {
       .in(Mode.Prod)
       .build
     Play.start(app)
+    Thread.sleep(Int.unbox(scrapeDelay) * 1000)
     Await.ready(
       Future.traverse(routesToScrape.toSeq.map(contextualizePath(app)))(
         path => renderPage(app, path).map(body => writeToFile(pathToFile(targetDirectory.getPath, path), body))),

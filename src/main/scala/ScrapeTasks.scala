@@ -19,11 +19,11 @@ object ScrapeTasks {
     (serverStarter.getDeclaredMethod(methodName, paramClasses: _*), ssInstance)
   }
 
-  def scrapeSpecifiedRoutes(applicationDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: Seq[String], config: Map[String, String]) = {
+  def scrapeSpecifiedRoutes(applicationDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: Seq[String], scrapeDelay: Int, config: Map[String, String]) = {
     import scala.collection.JavaConverters.{ seqAsJavaListConverter, mapAsJavaMapConverter }
     val (ssApply, ssInstance) = startServerMethod(loader, "apply",
-      classOf[File], classOf[File], classOf[ClassLoader], classOf[JList[String]], classOf[JMap[String, String]])
-    ssApply.invoke(ssInstance, applicationDirectory, targetDirectory, loader, routesToScrape.asJava, config.asJava)
+      classOf[File], classOf[File], classOf[ClassLoader], classOf[JList[String]], classOf[JMap[String, String]], classOf[java.lang.Integer])
+    ssApply.invoke(ssInstance, applicationDirectory, targetDirectory, loader, routesToScrape.asJava, config.asJava, Int.box(scrapeDelay))
   }
 
   def scrapeAssets(playAssets: Seq[(String, File)], targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {

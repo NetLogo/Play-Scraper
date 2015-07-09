@@ -27,6 +27,7 @@ object Scraper extends AutoPlugin {
   object autoImport {
     val scrapePlay                  = taskKey[Unit]("scrape play")
     val scrapeUpload                = taskKey[Unit]("upload scraped site")
+    val scrapeDelay                 = taskKey[Int]("number of seconds to delay after startup before scraping")
     val scrapeLoader                = taskKey[ClassLoader]("classLoader to use when scraping play")
     val scrapeContext               = settingKey[String]("subdirectory in which to put generated files")
     val scrapeTarget                = settingKey[File]("directory to scrape static site into")
@@ -81,6 +82,7 @@ object Scraper extends AutoPlugin {
         })
     },
     scrapeContext       := "",
+    scrapeDelay         := 0,
     scrapeRoutes        := Seq("/"),
     cleanFiles          <+= scrapeTarget,
     scrapePublishCredential     := credentials.fromEnvironmentVariables,
@@ -105,6 +107,6 @@ object Scraper extends AutoPlugin {
     (scrapePlay in Compile) := {
       val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("application.context" -> scrapeContext.value)
       scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value, customSettings)
-      scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, customSettings)
+      scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, scrapeDelay.value, customSettings)
     })
 }
