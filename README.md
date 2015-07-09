@@ -5,12 +5,12 @@ An SBT plugin to enable play sites to be served statically.
 ## How Do I Use It?
 To use, add the following to your `plugins.sbt`
 ```scala
-addSbtPlugin("org.nlogo" % "play-scraper" % "0.1")
+addSbtPlugin("org.nlogo" % "play-scraper" % "0.5")
 ```
 
 In your `build.sbt`, add:
 ```scala
-enablePlugins(org.nlogo.Scraper)
+enablePlugins(org.nlogo.PlayScrapePlugin)
 scrapeRoutes ++= Seq("/foo", "/bar.js")
 ```
 
