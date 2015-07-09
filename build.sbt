@@ -23,3 +23,7 @@ libraryDependencies ++= Seq(
   "com.amazonaws" % "aws-java-sdk-cloudfront" % "1.10.2",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.10.2"
 )
+
+bintrayRepository := "play-scraper"
+
+bintrayOrganization := Some("netlogo")
