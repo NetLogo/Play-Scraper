@@ -101,6 +101,3 @@ object StaticSiteUploader {
       pr.withAccessControlList(publiclyReadable)
   }
 }
-
-case class PublicationConfig(
-)
