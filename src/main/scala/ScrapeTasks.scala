@@ -19,11 +19,36 @@ object ScrapeTasks {
     (serverStarter.getDeclaredMethod(methodName, paramClasses: _*), ssInstance)
   }
 
+  def buildApplicationScraper[T](appScraperClass: Class[_ <: T], routesToScrape: Seq[String], targetDirectory: File): T = {
+    import scala.collection.JavaConverters.seqAsJavaListConverter
+
+    appScraperClass.getDeclaredConstructor(classOf[JList[String]], classOf[File])
+      .newInstance(routesToScrape.asJava, targetDirectory)
+      .asInstanceOf[T]
+  }
+
   def scrapeSpecifiedRoutes(applicationDirectory: File, targetDirectory: File, loader: ClassLoader, routesToScrape: Seq[String], scrapeDelay: Int, config: Map[String, String]) = {
-    import scala.collection.JavaConverters.{ seqAsJavaListConverter, mapAsJavaMapConverter }
-    val (ssApply, ssInstance) = startServerMethod(loader, "apply",
-      classOf[File], classOf[File], classOf[ClassLoader], classOf[JList[String]], classOf[JMap[String, String]], classOf[java.lang.Integer])
-    ssApply.invoke(ssInstance, applicationDirectory, targetDirectory, loader, routesToScrape.asJava, config.asJava, Int.box(scrapeDelay))
+    import scala.collection.JavaConverters.mapAsJavaMapConverter
+
+    val applicationScraperClass = loader.loadClass("org.nlogo.ApplicationScraper")
+    val (ssApply, ssInstance) = startServerMethod(
+      loader,
+      "apply",
+      classOf[File],
+      classOf[ClassLoader],
+      classOf[JMap[String, String]],
+      classOf[java.lang.Integer],
+      applicationScraperClass)
+
+    val applicationScraper = buildApplicationScraper(applicationScraperClass, routesToScrape, targetDirectory)
+
+    ssApply.invoke(
+      ssInstance,
+      applicationDirectory,
+      loader,
+      config.asJava,
+      Int.box(scrapeDelay),
+      applicationScraper.asInstanceOf[java.lang.Object])
   }
 
   def scrapeAssets(playAssets: Seq[(String, File)], targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
