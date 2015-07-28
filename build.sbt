@@ -6,7 +6,7 @@ name := "play-scraper"
 
 organization := "org.nlogo"
 
-version := "0.5"
+version := "0.6.0"
 
 isSnapshot := true
 

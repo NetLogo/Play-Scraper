@@ -1,0 +1,10 @@
+@(message: String)(implicit request: RequestHeader)
+
+@main("Welcome to Play") {
+
+    @play20.welcome(message)
+
+    <p>A simple project — for testing</p>
+
+    <a href="@routes.Application.index.absoluteURL">back here</a>
+}

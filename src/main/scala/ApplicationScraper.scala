@@ -18,9 +18,12 @@ import scala.collection.JavaConversions._
 import scala.concurrent.{ ExecutionContext, Future },
   ExecutionContext.Implicits.global
 
-class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File) {
-  def this(routesToScrape: JList[String], targetDirectory: File) =
-    this(routesToScrape: Seq[String], targetDirectory)
+class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, absoluteHost: Option[String]) {
+  def this(routesToScrape: JList[String], targetDirectory: File, absoluteHost: String) =
+    this(routesToScrape: Seq[String], targetDirectory, Option(absoluteHost))
+
+  lazy val additionalHeaders: Seq[(String, String)] =
+    absoluteHost.map(HOST -> _).map(Seq(_)).getOrElse(Seq())
 
   def scrape(app: Application): Future[Seq[Unit]] = {
     val contextualizedRoutes = routesToScrape.map(contextualizePath(app))
@@ -33,7 +36,7 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File) {
         writeToFile(pathToFile(targetDirectory.getPath, path), body)
     }
 
-  def simpleGetRequest(_path: String, additionalHeaders: Seq[(String, String)] = Seq()): RequestHeader = {
+  def simpleGetRequest(_path: String): RequestHeader = {
     new RequestHeader {
       def headers       = new play.api.mvc.Headers((ACCEPT -> "*/*") +: additionalHeaders)
       def id            = Random.nextInt

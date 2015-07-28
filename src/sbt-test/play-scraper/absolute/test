@@ -1,0 +1,5 @@
+> scrapePlay
+$ sleep 10
+$ exists target/play-scrape/assets/images/favicon.png
+$ exists target/play-scrape/index.html
+> checkDelayed
