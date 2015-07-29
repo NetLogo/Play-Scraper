@@ -32,6 +32,7 @@ object PlayScrapePlugin extends AutoPlugin {
     val scrapeContext               = settingKey[String]("subdirectory in which to put generated files")
     val scrapeTarget                = settingKey[File]("directory to scrape static site into")
     val scrapeRoutes                = settingKey[Seq[String]]("routes to be scraped")
+    val scrapeAbsoluteURL           = settingKey[Option[String]]("absolute URL to scrape against")
     val scrapePublishCredential     = settingKey[AWSCredentialsProvider]("scrape publication credential")
     val scrapePublishBucketID       = settingKey[Option[String]]("scrape publication bucket ID")
     val scrapePublishDistributionID = settingKey[Option[String]]("scrape publication distribution ID")
@@ -82,6 +83,7 @@ object PlayScrapePlugin extends AutoPlugin {
         })
     },
     scrapeContext       := "",
+    scrapeAbsoluteURL   := None,
     scrapeDelay         := 0,
     scrapeRoutes        := Seq("/"),
     cleanFiles          <+= scrapeTarget,
@@ -107,6 +109,6 @@ object PlayScrapePlugin extends AutoPlugin {
     (scrapePlay in Compile) := {
       val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("application.context" -> scrapeContext.value)
       scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value, customSettings)
-      scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, scrapeDelay.value, customSettings)
+      scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, scrapeDelay.value, customSettings, scrapeAbsoluteURL.value)
     })
 }
