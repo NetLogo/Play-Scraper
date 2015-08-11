@@ -6,7 +6,8 @@ import
       profile.ProfileCredentialsProvider,
     services.{ cloudfront, s3 },
       s3.{ AmazonS3, AmazonS3Client, model => s3model },
-        s3model.{ AccessControlList, GetObjectMetadataRequest, GroupGrantee, ObjectMetadata, Permission, PutObjectRequest },
+        s3model.{ AccessControlList, GetObjectMetadataRequest, GroupGrantee, ObjectMetadata,
+                  Permission, PutObjectRequest, RedirectRule, RoutingRule, RoutingRuleCondition },
       cloudfront.{ AmazonCloudFrontClient, model => cfmodel },
         cfmodel.{ CreateInvalidationRequest, InvalidationBatch, Paths }
 
@@ -30,24 +31,62 @@ object StaticSiteUploader {
     credential:      AWSCredentialsProvider,
     targetDirectory: File,
     bucketId:        String,
-    distributionId:  Option[String]
+    distributionId:  Option[String],
+    redirectHost:    Option[String]
   ) = {
     lazy val allFiles =
       recursiveFileEnumeration(targetDirectory)
         .filter(excludeFiles)
 
-    lazy val keysAndFiles =
-      allFiles.map(fileToKey(targetDirectory)) zip allFiles
+    lazy val fileKeys = allFiles.map(fileToKey(targetDirectory))
 
     lazy val metadataRequests =
-      keysAndFiles.map(_._1).map(getMetadataRequest(bucketId))
+      fileKeys.map(getMetadataRequest(bucketId))
 
     lazy val putRequests =
-      keysAndFiles.map((putRequest(bucketId) _).tupled)
+      (fileKeys zip allFiles).map((putRequest(bucketId) _).tupled)
 
-    upload(metadataRequests zip putRequests, credential)
+    val client = new AmazonS3Client(credential)
+
+    upload(metadataRequests zip putRequests, client)
+
+    addRedirects(bucketId, fileKeys, redirectHost, client)
 
     distributionId.foreach(id => invalidateDistribution(id, credential))
+  }
+
+  def upload(requests: Seq[(GetObjectMetadataRequest, PutObjectRequest)], client: AmazonS3Client) = {
+    val d = Duration("30 minutes")
+    println("beginning upload")
+    val futureRequests = requests.map {
+      case (mdr, pr) => Future { attemptPut(client, pr)(attemptMetadata(client, mdr)) }
+    }
+    val sequencedRequests = Future.sequence(futureRequests)
+    val putResults = Await.result(sequencedRequests, d)
+    println("finished upload")
+    putResults.filter(! _.isSuccess).foreach { pr =>
+      println("FAILED TO UPLOAD: " + pr.failed.get.getMessage)
+    }
+  }
+
+  def addRedirects(bucketId: String, fileKeys: Seq[String], redirectHost: Option[String], client: AmazonS3Client) = {
+    try {
+      val redirectToAppropriateHost: RedirectRule => RedirectRule =
+        redirectHost.map(host => (r: RedirectRule) => r.withHostName(host)).getOrElse(identity _)
+      val routingRules = fileKeys
+        .filter(! _.contains("."))
+        .map(k =>
+            new RoutingRule()
+              .withCondition(new RoutingRuleCondition().withKeyPrefixEquals(s"$k/"))
+              .withRedirect(redirectToAppropriateHost(new RedirectRule().withReplaceKeyWith(k))))
+      val currentConfiguration = client.getBucketWebsiteConfiguration(bucketId)
+      client.setBucketWebsiteConfiguration(bucketId, currentConfiguration.withRoutingRules(routingRules))
+    } catch {
+      case e: Throwable =>
+        println("failed to add redirects:")
+        println(e.getMessage)
+        e.printStackTrace()
+    }
   }
 
   def attemptPut(client: AmazonS3Client, request: PutObjectRequest)(currentObjectMetadata: Try[ObjectMetadata]): Try[Unit] =
@@ -62,21 +101,6 @@ object StaticSiteUploader {
     Try { client.getObjectMetadata(request) }.recover {
       case e: Throwable => new ObjectMetadata()
     }
-
-  def upload(requests: Seq[(GetObjectMetadataRequest, PutObjectRequest)], credentialsProvider: AWSCredentialsProvider) = {
-    val d = Duration("30 minutes")
-    val client = new AmazonS3Client(credentialsProvider)
-    println("beginning upload")
-    val futureRequests = requests.map {
-      case (mdr, pr) => Future { attemptPut(client, pr)(attemptMetadata(client, mdr)) }
-    }
-    val sequencedRequests = Future.sequence(futureRequests)
-    val putResults = Await.result(sequencedRequests, d)
-    println("finished upload")
-    putResults.filter(! _.isSuccess).foreach { pr =>
-      println("FAILED TO UPLOAD: " + pr.failed.get.getMessage)
-    }
-  }
 
   def invalidateDistribution(distributionId: String, credentialsProvider: AWSCredentialsProvider) = {
     val cfc = new AmazonCloudFrontClient(credentialsProvider)

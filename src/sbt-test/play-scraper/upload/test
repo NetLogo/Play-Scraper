@@ -12,4 +12,7 @@ $ exists target/play-scrape/index.html
 > scrapeUpload
 > testSleep 5
 > checkUploadedMoreThan 7 http://play-scrape-test.s3-website-us-east-1.amazonaws.com/
+# Check that redirects work for pages with no extensions
+> checkPublicUpload http://play-scrape-test.s3-website-us-east-1.amazonaws.com/other other
+> checkPublicUpload http://play-scrape-test.s3-website-us-east-1.amazonaws.com/other/ other
 

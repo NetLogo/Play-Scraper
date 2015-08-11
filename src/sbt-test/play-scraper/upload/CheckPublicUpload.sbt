@@ -47,5 +47,4 @@ checkUploadedMoreThan := {
     println(lmDateEpochSeconds)
     sys.error("Unchanged file was reuploaded at " + lastModified)
   }
-
 }

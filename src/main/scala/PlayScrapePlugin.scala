@@ -76,7 +76,8 @@ object PlayScrapePlugin extends AutoPlugin {
             scrapePublishCredential.value,
             scrapeTarget.value,
             bucketID,
-            distributionID
+            distributionID,
+            scrapeAbsoluteURL.value
           )
         })).getOrElse(Def.task {
           sys.error("set scrapePublishBucketID to publish")
