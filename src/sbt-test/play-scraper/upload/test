@@ -1,0 +1,11 @@
+> scrapePlay
+$ exists target/play-scrape
+$ exists target/play-scrape/assets
+$ exists target/play-scrape/assets/images/favicon.png
+$ sleep 10
+$ exists target/play-scrape/index.html
+> scrapeUpload
+$ sleep 5
+> checkPublicUpload http://play-scrape-test.s3-website-us-east-1.amazonaws.com/ index.html
+$ sleep 5
+
