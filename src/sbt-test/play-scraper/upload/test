@@ -2,10 +2,14 @@
 $ exists target/play-scrape
 $ exists target/play-scrape/assets
 $ exists target/play-scrape/assets/images/favicon.png
-$ sleep 10
+> testSleep 5
 $ exists target/play-scrape/index.html
+# Check basic upload functionality
 > scrapeUpload
-$ sleep 5
+> testSleep 5
 > checkPublicUpload http://play-scrape-test.s3-website-us-east-1.amazonaws.com/ index.html
-$ sleep 5
+# Check that re-uploading only changes changed files
+> scrapeUpload
+> testSleep 5
+> checkUploadedMoreThan 7 http://play-scrape-test.s3-website-us-east-1.amazonaws.com/
 

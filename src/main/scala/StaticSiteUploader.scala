@@ -6,12 +6,15 @@ import
       profile.ProfileCredentialsProvider,
     services.{ cloudfront, s3 },
       s3.{ AmazonS3, AmazonS3Client, model => s3model },
-        s3model.{ AccessControlList, GroupGrantee, ObjectMetadata, Permission, PutObjectRequest },
+        s3model.{ AccessControlList, GetObjectMetadataRequest, GroupGrantee, ObjectMetadata, Permission, PutObjectRequest },
       cloudfront.{ AmazonCloudFrontClient, model => cfmodel },
         cfmodel.{ CreateInvalidationRequest, InvalidationBatch, Paths }
 
 import
-  java.io.{ File, IOException }
+  java.io.{ File, FileInputStream, IOException }
+
+import
+  org.apache.commons.codec.digest.DigestUtils
 
 import
   scala.{ collection, concurrent, util },
@@ -29,32 +32,46 @@ object StaticSiteUploader {
     bucketId:        String,
     distributionId:  Option[String]
   ) = {
-    lazy val allPutRequests =
+    lazy val allFiles =
       recursiveFileEnumeration(targetDirectory)
         .filter(excludeFiles)
-        .map(putRequest(bucketId, fileToKey(targetDirectory)))
 
-    upload(allPutRequests, credential)
+    lazy val keysAndFiles =
+      allFiles.map(fileToKey(targetDirectory)) zip allFiles
+
+    lazy val metadataRequests =
+      keysAndFiles.map(_._1).map(getMetadataRequest(bucketId))
+
+    lazy val putRequests =
+      keysAndFiles.map((putRequest(bucketId) _).tupled)
+
+    upload(metadataRequests zip putRequests, credential)
 
     distributionId.foreach(id => invalidateDistribution(id, credential))
   }
 
-  def upload(putRequests: Seq[PutObjectRequest], credentialsProvider: AWSCredentialsProvider) = {
-    val d = Duration("30 minutes")
-    val s3client = new AmazonS3Client(credentialsProvider)
-    println("beginning upload")
-    val futurePutRequests = putRequests.map(r => Future { Try {
-      try {
-        s3client.putObject(r)
-      } catch {
-        case e: Throwable =>
-          println("FAILED TO UPLOAD: " + r.getKey)
-          throw e
-      }
+  def attemptPut(client: AmazonS3Client, request: PutObjectRequest)(currentObjectMetadata: Try[ObjectMetadata]): Try[Unit] =
+    for {
+      metadata <- currentObjectMetadata
+    } yield
+      if (metadata.getUserMetadata.getOrElse("sha1", "") != request.getMetadata.getUserMetadata.get("sha1"))
+        Try { client.putObject(request) }
+      else Try { () }
+
+  def attemptMetadata(client: AmazonS3Client, request: GetObjectMetadataRequest): Try[ObjectMetadata] =
+    Try { client.getObjectMetadata(request) }.recover {
+      case e: Throwable => new ObjectMetadata()
     }
-    })
-    val putRequestsFuture = Future.sequence(futurePutRequests)
-    val putResults = Await.result(putRequestsFuture, d)
+
+  def upload(requests: Seq[(GetObjectMetadataRequest, PutObjectRequest)], credentialsProvider: AWSCredentialsProvider) = {
+    val d = Duration("30 minutes")
+    val client = new AmazonS3Client(credentialsProvider)
+    println("beginning upload")
+    val futureRequests = requests.map {
+      case (mdr, pr) => Future { attemptPut(client, pr)(attemptMetadata(client, mdr)) }
+    }
+    val sequencedRequests = Future.sequence(futureRequests)
+    val putResults = Await.result(sequencedRequests, d)
     println("finished upload")
     putResults.filter(! _.isSuccess).foreach { pr =>
       println("FAILED TO UPLOAD: " + pr.failed.get.getMessage)
@@ -71,10 +88,16 @@ object StaticSiteUploader {
     println("Invalidation finished")
   }
 
-  def htmlMetadata = {
-    val hm = new ObjectMetadata()
-    hm.setContentType("text/html; charset=utf-8")
-    hm
+  def versionMetadata(f: File) = {
+    val md = new ObjectMetadata()
+    val computedSHA1 = DigestUtils.sha1Hex(new FileInputStream(f))
+    md.addUserMetadata("sha1", computedSHA1)
+    md
+  }
+
+  def htmlMetadata(md: ObjectMetadata): ObjectMetadata = {
+    md.setContentType("text/html; charset=utf-8")
+    md
   }
 
   def fileToKey(targetDirectory: File)(f: File): String =
@@ -94,11 +117,14 @@ object StaticSiteUploader {
 
   val excludeFiles: (File) => Boolean = (file: File) => ! file.getName.startsWith(".")
 
-  def putRequest(bucketName: String, generateKey: File => String)(f: File): PutObjectRequest = {
-    val pr = new PutObjectRequest(bucketName, generateKey(f), f)
+  def getMetadataRequest(bucketName: String)(key: String): GetObjectMetadataRequest =
+    new GetObjectMetadataRequest(bucketName, key)
+
+  def putRequest(bucketName: String)(key: String, f: File): PutObjectRequest = {
+    val pr = new PutObjectRequest(bucketName, key, f)
     if (f.getName.endsWith("html") || ! f.getName.contains('.'))
-      pr.withMetadata(htmlMetadata).withAccessControlList(publiclyReadable)
+      pr.withMetadata(htmlMetadata(versionMetadata(f))).withAccessControlList(publiclyReadable)
     else
-      pr.withAccessControlList(publiclyReadable)
+      pr.withMetadata(versionMetadata(f)).withAccessControlList(publiclyReadable)
   }
 }
