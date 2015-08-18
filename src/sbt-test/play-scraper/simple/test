@@ -4,3 +4,5 @@ $ exists target/play-scrape/assets
 $ exists target/play-scrape/assets/images/favicon.png
 $ sleep 10
 $ exists target/play-scrape/index.html
+$ exists target/play-scrape/favicon.png
+> checkIdentical target/play-scrape/favicon.png target/play-scrape/assets/images/favicon.png

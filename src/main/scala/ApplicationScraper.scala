@@ -1,8 +1,6 @@
 package org.nlogo
 
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStreamWriter
+import java.io.{ File, FileOutputStream, OutputStream }
 
 import java.util.{ List => JList }
 
@@ -30,11 +28,10 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
     Future.traverse(contextualizedRoutes)(scrapeRoute(app, targetDirectory))
   }
 
-  def scrapeRoute(app: Application, targetDirectory: File)(path: String): Future[Unit] =
-    renderPage(app, path).map {
-      body =>
-        writeToFile(pathToFile(targetDirectory.getPath, path), body)
-    }
+  def scrapeRoute(app: Application, targetDirectory: File)(path: String): Future[Unit] = {
+    val fileStream = new FileOutputStream(pathToFile(targetDirectory.getPath, path))
+    renderPage(app, path, fileStream).map { _ => fileStream.close() }
+  }
 
   def simpleGetRequest(_path: String): RequestHeader = {
     new RequestHeader {
@@ -56,14 +53,13 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
       .map(context => s"$context$requestedPath".replaceAll("//", "/"))
       .getOrElse(requestedPath)
 
-  private def renderPage(app: Application, path: String): Future[String] = {
+  private def renderPage(app: Application, path: String, outputStream: OutputStream): Future[Unit] = {
     val req = simpleGetRequest(path)
     val (_, handler) = app.requestHandler.handlerForRequest(req)
     val action = handler.asInstanceOf[EssentialAction]
-    val fileWritingIteratee = Iteratee
-      .fold[Array[Byte], Array[Byte]](Array[Byte]())(_ ++ _)
-      .map(new String(_, "UTF-8"))
-      action(req).flatMapM(result => result.body(fileWritingIteratee)).run
+    val fileWritingIteratee =
+      Iteratee.foreach[Array[Byte]](bytes => outputStream.write(bytes, 0, bytes.length))
+    action(req).flatMapM(result => result.body(fileWritingIteratee)).run
   }
 
   private def pathToFile(parentDirPath: String, path: String): File = {
@@ -78,14 +74,5 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
           toFile(dir.getPath, rest.drop(1))
       }
     toFile(parentDirPath, path.drop(1))
-  }
-
-  private def writeToFile(file: File, text: String): Unit = {
-    val fileOutputStream = new FileOutputStream(file)
-    val writer = new OutputStreamWriter(fileOutputStream, "UTF-8")
-    writer.write(text, 0, text.length)
-    writer.flush()
-    writer.close()
-    fileOutputStream.close()
   }
 }
