@@ -8,7 +8,7 @@ import java.io.File
 import java.net.URL
 import java.util.{ List => JList }
 
-import sbt.{ AutoPlugin, Def, taskKey, settingKey, Project, Compile, State, Path }, Path._
+import sbt.{ AutoPlugin, Def, IO, taskKey, settingKey, Project, Compile, State, Path }, Path._
 import sbt.Keys._
 
 import play.Play
@@ -109,6 +109,8 @@ object PlayScrapePlugin extends AutoPlugin {
     },
     (scrapePlay in Compile) := {
       val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("application.context" -> scrapeContext.value)
+      IO.delete(scrapeTarget.value)
+      IO.createDirectory(scrapeTarget.value)
       scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value, customSettings)
       scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, scrapeDelay.value, customSettings, scrapeAbsoluteURL.value)
     })

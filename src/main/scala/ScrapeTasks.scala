@@ -54,12 +54,13 @@ object ScrapeTasks {
   def scrapeAssets(playAssets: Seq[(String, File)], targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
     val (ssPathForAsset, ssInstance) = startServerMethod(loader, "pathForAsset", classOf[String])
     val lookupAssetPath = ((s: String) => ssPathForAsset.invoke(ssInstance, s).asInstanceOf[String])
-    copyFiles(
+    val filesToCopy =
       playAssets flatMap {
         case (displayPath, assetsDir) =>
           (assetsDir ***).get.flatMap(f =>
               relativeTo(assetsDir)(f).map(assetPath =>
                   (f, targetDirectory / customSettings.getOrElse("application.context", "") / lookupAssetPath(assetPath))))
-      })
+      }
+    copyFiles(filesToCopy, overwrite=true)
   }
 }
