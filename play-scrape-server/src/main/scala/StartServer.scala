@@ -5,7 +5,6 @@ import java.io.File
 import java.util.{ List => JList, Map => JMap }
 
 import play.api.{ Mode, Play, Configuration, Application }
-import play.runsupport.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.inject.guice.GuiceableModule
 

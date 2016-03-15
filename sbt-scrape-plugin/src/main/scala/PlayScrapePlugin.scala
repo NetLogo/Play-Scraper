@@ -65,7 +65,10 @@ object PlayScrapePlugin extends AutoPlugin {
       new ProfileCredentialsProvider(name)
   }
 
+  import sbt._
+
   override val projectSettings = Seq(
+    libraryDependencies += "org.nlogo" %% "play-scrape-server" % "0.6.4", // shouldn't be hardcoded
     scrapeTarget        := target.value / "play-scrape",
     scrapeUpload        <<= Def.taskDyn {
       (for {
