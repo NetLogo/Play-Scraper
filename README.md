@@ -1,8 +1,9 @@
 # Play-Scraper
 
-An SBT plugin to enable play sites to be served statically.
+An SBT plugin to enable Play sites to be served statically.
 
 ## How Do I Use It?
+
 To use, add the following to your `plugins.sbt`
 ```scala
 resolvers += Resolver.url(
@@ -10,7 +11,7 @@ resolvers += Resolver.url(
     url("http://dl.bintray.com/content/netlogo/play-scraper"))(
         Resolver.ivyStylePatterns)
 
-addSbtPlugin("org.nlogo" % "play-scraper" % "0.5")
+addSbtPlugin("org.nlogo" % "play-scraper" % "0.7.0")
 ```
 
 In your `build.sbt`, add:
@@ -20,6 +21,7 @@ scrapeRoutes ++= Seq("/foo", "/bar.js")
 ```
 
 You will then have access to the `scrapePlay` sbt task, which will scrape the routes specified, plus play assets, and put them in `target/play-scrape`.
+Note that version 0.7.0 is compatible only with Play 2.5. Versions of play earlier than 2.5 should use 0.6.2.
 
 ## How Do I Build It?
 

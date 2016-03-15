@@ -1,8 +1,8 @@
-lazy val playVersion = "2.4.0"
+lazy val playVersion = "2.5.0"
 
 lazy val sharedSettings = Seq(
   organization := "org.nlogo",
-  version      := "0.6.4",
+  version      := "0.7.0",
   isSnapshot   := true,
   resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
   licenses  += ("Public Domain", url("http://creativecommons.org/licenses/publicdomain/")),

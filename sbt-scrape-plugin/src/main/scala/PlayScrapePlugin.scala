@@ -11,8 +11,8 @@ import java.util.{ List => JList }
 import sbt.{ AutoPlugin, Def, IO, taskKey, settingKey, Project, Compile, State, Path }, Path._
 import sbt.Keys._
 
-import play.Play
 import play.core.Build
+import play.sbt.Play
 import play.sbt.run.PlayReload
 import play.sbt.PlayInternalKeys.{ playAllAssets, playAssetsClassLoader, playCommonClassloader, playCompileEverything,
   playDependencyClassLoader, playDependencyClasspath, playReload, playReloaderClassLoader, playReloaderClasspath }
@@ -40,8 +40,10 @@ object PlayScrapePlugin extends AutoPlugin {
 
   import autoImport._
 
+  override def requires = Play && sbt.plugins.JvmPlugin
+  override def trigger = allRequirements
+
   val buildLoader = PlayScrapePlugin.getClass.getClassLoader
-  val scraperLocation = PlayScrapePlugin.getClass.getProtectionDomain.getCodeSource.getLocation
 
   private def urls(files: Seq[File]): Seq[URL] = files.map(_.toURI.toURL)
 
@@ -68,7 +70,13 @@ object PlayScrapePlugin extends AutoPlugin {
   import sbt._
 
   override val projectSettings = Seq(
-    libraryDependencies += "org.nlogo" %% "play-scrape-server" % "0.6.4", // shouldn't be hardcoded
+    allDependencies += "org.nlogo" %% "play-scrape-server" % {
+      val plugins = buildStructure.value.units(thisProjectRef.value.build).unit.plugins.pluginData.classpath
+      val module = plugins
+        .flatMap(_.get(AttributeKey[sbt.ModuleID]("moduleId")))
+        .filter(m => m.organization == "org.nlogo" && m.name == "play-scraper")
+      module.map(_.revision).head
+    },
     scrapeTarget        := target.value / "play-scrape",
     scrapeUpload        <<= Def.taskDyn {
       (for {
@@ -100,6 +108,11 @@ object PlayScrapePlugin extends AutoPlugin {
         case CompileSuccess(sources, classpath) =>
           // For more information, see
           // https://github.com/playframework/playframework/blob/bc38516056b458bdc41818e7395815366c5e119d/framework/src/run-support/src/main/scala/play/runsupport/Reloader.scala#L127-L167
+          val scraperLocation = (fullClasspath in Compile).value
+            .filter(f =>
+              f.get(AttributeKey[ModuleID]("moduleId"))
+                .exists(m => m.organization == "org.nlogo" && m.name.startsWith("play-scrape-server")))
+            .map(_.data.toURI.toURL).head
           val fullClassPath = urls(playDependencyClasspath.value.files) ++ urls(classpath) :+ scraperLocation
           lazy val commonClassLoader = playCommonClassloader.value
           lazy val delegatingLoader = delegateLoader(commonClassLoader, buildLoader,
