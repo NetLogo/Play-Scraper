@@ -70,6 +70,7 @@ object PlayScrapePlugin extends AutoPlugin {
   import sbt._
 
   override val projectSettings = Seq(
+    resolvers += Resolver.bintrayRepo("content/netlogo", "play-scraper"),
     allDependencies += "org.nlogo" %% "play-scrape-server" % {
       val plugins = buildStructure.value.units(thisProjectRef.value.build).unit.plugins.pluginData.classpath
       val module = plugins
