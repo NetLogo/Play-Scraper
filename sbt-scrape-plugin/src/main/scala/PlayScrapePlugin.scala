@@ -92,7 +92,8 @@ object PlayScrapePlugin extends AutoPlugin {
             scrapeAbsoluteURL.value
           )
         })).getOrElse(Def.task {
-          sys.error("set scrapePublishBucketID to publish")
+          streams.value.log.warn("*** Warning: NO UPLOAD PERFORMED ***")
+          streams.value.log.warn("Skipping upload since scrapePublishBucketID not set")
         })
     },
     scrapeContext       := "",
