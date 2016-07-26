@@ -1,4 +1,4 @@
-lazy val playVersion = "2.5.0"
+lazy val playVersion = "2.5.4"
 
 lazy val sharedSettings = Seq(
   organization := "org.nlogo",
