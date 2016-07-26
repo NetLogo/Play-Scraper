@@ -38,6 +38,15 @@ object StartServer {
   def pathForAsset(assetName: String): String = {
     val assetRouterClass = getClass.getClassLoader.loadClass("controllers.ReverseAssets")
     val assetRouterInstance = getClass.getClassLoader.loadClass("controllers.routes").getField("Assets").get(null)
-    assetRouterClass.getDeclaredMethod("at", classOf[String]).invoke(assetRouterInstance, assetName).asInstanceOf[play.api.mvc.Call].url
+    try
+      assetRouterClass.getDeclaredMethod("versioned", classOf[controllers.Assets.Asset]).
+                       invoke(assetRouterInstance, new controllers.Assets.Asset(assetName)).
+                       asInstanceOf[play.api.mvc.Call].url
+    catch {
+      case ex: NoSuchMethodException =>
+        assetRouterClass.getDeclaredMethod("at", classOf[String]).
+                         invoke(assetRouterInstance, assetName).
+                         asInstanceOf[play.api.mvc.Call].url
+    }
   }
 }
