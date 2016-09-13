@@ -126,7 +126,7 @@ object PlayScrapePlugin extends AutoPlugin {
       }
     },
     (scrapePlay in Compile) := {
-      val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("application.context" -> scrapeContext.value)
+      val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("play.http.context" -> scrapeContext.value)
       IO.delete(scrapeTarget.value)
       IO.createDirectory(scrapeTarget.value)
       scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value, customSettings)

@@ -53,7 +53,7 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
   }
 
   private def contextualizePath(app: Application)(requestedPath: String) =
-    app.configuration.getString("application.context")
+    app.configuration.getString("play.http.context")
       .map(context => s"$context$requestedPath".replaceAll("//", "/"))
       .getOrElse(requestedPath)
 
@@ -61,7 +61,7 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
     val req = simpleGetRequest(path)
     val (_, handler) = app.requestHandler.handlerForRequest(req)
     val action = handler.asInstanceOf[EssentialAction]
-    val fileWritingIteratee = FileIO.toFile(file)
+    val fileWritingIteratee = FileIO.toPath(file.toPath)
     implicit val materializer = app.materializer
     action(req).run().map(_.body.dataStream.runWith(fileWritingIteratee))
   }

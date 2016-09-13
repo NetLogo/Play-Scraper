@@ -40,6 +40,7 @@ lazy val playScrapeServer = project.in(file("play-scrape-server")).
   settings(
     name                := "play-scrape-server",
     scalaVersion        := "2.11.8",
+    scalacOptions       ++= Seq("-deprecation"),
     libraryDependencies += "com.typesafe.play" %% "play" % playVersion)
 
 

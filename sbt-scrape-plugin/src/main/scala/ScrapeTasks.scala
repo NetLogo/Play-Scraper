@@ -59,7 +59,7 @@ object ScrapeTasks {
         case (displayPath, assetsDir) =>
           (assetsDir ***).get.flatMap(f =>
               relativeTo(assetsDir)(f).map(assetPath =>
-                  (f, targetDirectory / customSettings.getOrElse("application.context", "") / lookupAssetPath(assetPath))))
+                  (f, targetDirectory / customSettings.getOrElse("play.http.context", "") / lookupAssetPath(assetPath))))
       }
     copyFiles(filesToCopy, overwrite=true)
   }
