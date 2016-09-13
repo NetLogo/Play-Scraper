@@ -1,4 +1,4 @@
-lazy val playVersion = "2.5.4"
+lazy val playVersion = "2.5.6"
 
 lazy val sharedSettings = Seq(
   organization := "org.nlogo",
@@ -30,8 +30,8 @@ lazy val playScrape = project.in(file("sbt-scrape-plugin")).
     scalacOptions       ++= Seq("-feature", "-deprecation"),
     addSbtPlugin(("com.typesafe.play" % "sbt-plugin" % playVersion).extra("scalaVersion" -> "2.10")),
     libraryDependencies ++= Seq(
-      "com.amazonaws" % "aws-java-sdk-cloudfront" % "1.10.59",
-      "com.amazonaws" % "aws-java-sdk-s3"         % "1.10.59",
+      "com.amazonaws" % "aws-java-sdk-cloudfront" % "1.11.33",
+      "com.amazonaws" % "aws-java-sdk-s3"         % "1.11.33",
       "commons-codec" % "commons-codec"           % "1.10"
     ))
 
@@ -39,7 +39,7 @@ lazy val playScrapeServer = project.in(file("play-scrape-server")).
   settings(sharedSettings).
   settings(
     name                := "play-scrape-server",
-    scalaVersion        := "2.11.7",
+    scalaVersion        := "2.11.8",
     libraryDependencies += "com.typesafe.play" %% "play" % playVersion)
 
 
