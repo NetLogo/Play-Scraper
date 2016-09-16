@@ -4,6 +4,9 @@ import
   com.amazonaws.auth.{ AWSCredentialsProvider, EnvironmentVariableCredentialsProvider, profile },
     profile.ProfileCredentialsProvider
 
+import
+  com.typesafe.sbt.packager.universal.UniversalPlugin.autoImport.stage
+
 import java.io.File
 import java.net.URL
 import java.util.{ List => JList }
@@ -108,20 +111,10 @@ object PlayScrapePlugin extends AutoPlugin {
       import Play._
       compilePlay(state.value) match {
         case CompileSuccess(sources, classpath) =>
-          // For more information, see
-          // https://github.com/playframework/playframework/blob/bc38516056b458bdc41818e7395815366c5e119d/framework/src/run-support/src/main/scala/play/runsupport/Reloader.scala#L127-L167
-          val scraperLocation = (fullClasspath in Compile).value
-            .filter(f =>
-              f.get(AttributeKey[ModuleID]("moduleId"))
-                .exists(m => m.organization == "org.nlogo" && m.name.startsWith("play-scrape-server")))
-            .map(_.data.toURI.toURL).head
-          val fullClassPath = urls(playDependencyClasspath.value.files) ++ urls(classpath) :+ scraperLocation
-          lazy val commonClassLoader = playCommonClassloader.value
-          lazy val delegatingLoader = delegateLoader(commonClassLoader, buildLoader,
-            () => playReloaderClassLoader.value("reloader", fullClassPath.toArray, appLoader))
-          lazy val depLoader = playDependencyClassLoader.value("PlayDependencyClassLoader", fullClassPath.toArray, delegatingLoader)
-          lazy val appLoader: ClassLoader = playAssetsClassLoader.value(depLoader)
-          appLoader
+          val confDirectory = (resourceDirectory in Compile).value.toURI.toURL
+          val fullStageDirectory = stage.value
+          val allJars = urls((fullStageDirectory / "lib" ** "*.jar").get)
+          playDependencyClassLoader.value("PlayDependencyClassLoader", (allJars :+ confDirectory).toArray, playCommonClassloader.value)
         case CompileFailure(playException) => throw playException
       }
     },
@@ -129,7 +122,8 @@ object PlayScrapePlugin extends AutoPlugin {
       val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("play.http.context" -> scrapeContext.value)
       IO.delete(scrapeTarget.value)
       IO.createDirectory(scrapeTarget.value)
-      scrapeAssets(playAllAssets.value, scrapeTarget.value, scrapeLoader.value, customSettings)
+      val assetsJar = (stage.value / "lib" * "*-assets.jar").get.head
+      scrapeAssets(playAllAssets.value, assetsJar, scrapeTarget.value, scrapeLoader.value, customSettings)
       scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, scrapeDelay.value, customSettings, scrapeAbsoluteURL.value)
     })
 }

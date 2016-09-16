@@ -51,15 +51,21 @@ object ScrapeTasks {
       applicationScraper.asInstanceOf[java.lang.Object])
   }
 
-  def scrapeAssets(playAssets: Seq[(String, File)], targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
+  // path desired: /assets/javascripts/....js
+  // path in jar: /public/javascripts/....js
+  // playAllAssets: (public/, file::path/to/public/main)
+  def scrapeAssets(playAssets: Seq[(String, File)], jarFile: File, targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
     val (ssPathForAsset, ssInstance) = startServerMethod(loader, "pathForAsset", classOf[String])
     val lookupAssetPath = ((s: String) => ssPathForAsset.invoke(ssInstance, s).asInstanceOf[String])
+    val tempDirectory = IO.createTemporaryDirectory
+    IO.unzip(jarFile, tempDirectory)
+    val displayPath = playAssets.head._1 // this will typically be /public. Not sure how to deal with having more than one path
+    val allAssets = (tempDirectory / displayPath ***).get.map(assetFile => (tempDirectory / displayPath, assetFile))
     val filesToCopy =
-      playAssets flatMap {
-        case (displayPath, assetsDir) =>
-          (assetsDir ***).get.flatMap(f =>
-              relativeTo(assetsDir)(f).map(assetPath =>
-                  (f, targetDirectory / customSettings.getOrElse("play.http.context", "") / lookupAssetPath(assetPath))))
+      allAssets.flatMap {
+        case (assetsDir, asset) =>
+          relativeTo(assetsDir)(asset).map(assetPath =>
+              (asset, targetDirectory / customSettings.getOrElse("play.http.context", "") / lookupAssetPath(assetPath)))
       }
     copyFiles(filesToCopy, overwrite=true)
   }
