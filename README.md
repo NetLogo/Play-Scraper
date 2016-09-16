@@ -11,7 +11,7 @@ resolvers += Resolver.url(
     url("http://dl.bintray.com/content/netlogo/play-scraper"))(
         Resolver.ivyStylePatterns)
 
-addSbtPlugin("org.nlogo" % "play-scraper" % "0.7.2")
+addSbtPlugin("org.nlogo" % "play-scraper" % "0.7.4")
 ```
 
 In your `build.sbt`, add:
