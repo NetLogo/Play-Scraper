@@ -13,7 +13,6 @@ lazy val sharedSettings = Seq(
 lazy val root = project.in(file(".")).
   aggregate(playScrape, playScrapeServer).
   settings(sharedSettings).
-  settings(scriptedSettings).
   settings(
     publishLocal := {
       (publishLocal in playScrape).value
@@ -23,6 +22,7 @@ lazy val root = project.in(file(".")).
 
 lazy val playScrape = project.in(file("sbt-scrape-plugin")).
   settings(sharedSettings).
+  settings(scriptedSettings).
   settings(
     sbtPlugin           := true,
     name                := "play-scraper",
@@ -47,7 +47,6 @@ lazy val playScrapeServer = project.in(file("play-scrape-server")).
 lazy val scriptedSettings =
   ScriptedPlugin.scriptedSettings ++
   Seq(
-    sbtTestDirectory := baseDirectory.value / "sbt-scrape-plugin" / "src" / "sbt-test",
     scriptedLaunchOpts := { scriptedLaunchOpts.value ++
       Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
     },

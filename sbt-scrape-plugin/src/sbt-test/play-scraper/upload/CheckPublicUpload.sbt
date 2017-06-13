@@ -1,7 +1,7 @@
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.RequestBuilder
 import org.apache.http.client.utils.DateUtils
-import org.apache.http.impl.client.DefaultHttpClient
+import org.apache.http.impl.client.HttpClientBuilder
 import Def.{ inputKey, spaceDelimited }
 import scala.io.Source
 
@@ -13,7 +13,7 @@ val checkUploadedMoreThan = inputKey[Unit]("Check that a file is more than x sec
 
 def fetchRemote(uri: String): HttpResponse = {
   val req    = RequestBuilder.get().setUri(uri).build
-  val client = new DefaultHttpClient()
+  val client = HttpClientBuilder.create().build()
   client.execute(req)
 }
 
