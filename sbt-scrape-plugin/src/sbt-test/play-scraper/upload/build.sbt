@@ -1,4 +1,4 @@
-import org.nlogo.PlayScrapePlugin.credentials.fromCredentialsProfile
+import org.nlogo.PlayScrapePlugin.credentials.{ fromCredentialsProfile, fromEnvironmentVariables }
 
 name := """upload"""
 
@@ -10,7 +10,10 @@ scalaVersion := "2.11.8"
 
 scrapeRoutes += "/other"
 
-scrapePublishCredential := fromCredentialsProfile("play-scrape-tester")
+if (System.getenv("CREDENTIALS_FROM_ENVIRONMENT") == "true")
+  scrapePublishCredential := fromEnvironmentVariables
+else
+  scrapePublishCredential := fromCredentialsProfile("play-scrape-tester")
 
 scrapePublishBucketID := Some("play-scrape-test")
 

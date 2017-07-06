@@ -82,28 +82,28 @@ object PlayScrapePlugin extends AutoPlugin {
       module.map(_.revision).head
     },
     scrapeTarget        := target.value / "play-scrape",
-    scrapeUpload        <<= Def.taskDyn {
-      (for {
-        bucketID <- scrapePublishBucketID.value
-        distributionID = scrapePublishDistributionID.value
-      } yield (Def.task {
-          StaticSiteUploader.deploy(
-            scrapePublishCredential.value,
-            scrapeTarget.value,
-            bucketID,
-            distributionID,
-            scrapeAbsoluteURL.value
-          )
-        })).getOrElse(Def.task {
-          streams.value.log.warn("*** Warning: NO UPLOAD PERFORMED ***")
-          streams.value.log.warn("Skipping upload since scrapePublishBucketID not set")
-        })
+    scrapeUpload        := {
+      val bucketID = scrapePublishBucketID.value
+      if (bucketID.isEmpty) {
+        streams.value.log.warn("*** Warning: NO UPLOAD PERFORMED ***")
+        streams.value.log.warn("Skipping upload since scrapePublishBucketID not set")
+      } else {
+        val bucket = bucketID.get
+        val distributionID = scrapePublishDistributionID.value
+        StaticSiteUploader.deploy(
+          scrapePublishCredential.value,
+          scrapeTarget.value,
+          bucket,
+          distributionID,
+          scrapeAbsoluteURL.value
+        )
+      }
     },
     scrapeContext       := "",
     scrapeAbsoluteURL   := None,
     scrapeDelay         := 0,
     scrapeRoutes        := Seq("/"),
-    cleanFiles          <+= scrapeTarget,
+    cleanFiles          += scrapeTarget.value,
     scrapePublishCredential     := credentials.fromEnvironmentVariables,
     scrapePublishBucketID       := None,
     scrapePublishDistributionID := None,
