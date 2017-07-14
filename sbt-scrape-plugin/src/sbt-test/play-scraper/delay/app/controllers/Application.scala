@@ -5,10 +5,10 @@ import
 
 import
   play.api._,
-    cache.CacheApi,
+    cache.SyncCacheApi,
     mvc._
 
-class Application @Inject() (cache: CacheApi) extends Controller {
+class Application @Inject() (cache: SyncCacheApi) extends InjectedController {
 
   def index = Action {
     Thread.sleep(1000)
