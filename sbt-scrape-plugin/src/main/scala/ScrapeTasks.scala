@@ -41,7 +41,7 @@ object ScrapeTasks {
       applicationScraperClass)
 
     val applicationScraper = buildApplicationScraper(applicationScraperClass, routesToScrape, targetDirectory, absoluteURL)
-
+    
     ssApply.invoke(
       ssInstance,
       applicationDirectory,

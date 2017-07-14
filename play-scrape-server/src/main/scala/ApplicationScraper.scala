@@ -9,20 +9,22 @@ import java.util.{ List => JList }
 
 import play.api.Application
 import play.api.http.HeaderNames.{ HOST, ACCEPT }
-import play.api.mvc.{ RequestHeader, EssentialAction }
+import play.api.mvc.{ RequestHeader, EssentialAction, Session }
+import play.api.mvc.request.{ RemoteConnection, RequestTarget, RequestAttrKey, Cell }
 import play.api.libs.concurrent.MaterializerProvider
 import play.api.DefaultApplication
+import play.api.libs.typedmap.{ TypedMap, TypedEntry }
 
 import scala.util.Try
 import scala.util.Random
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 import scala.concurrent.{ ExecutionContext, Future },
   ExecutionContext.Implicits.global
 
 class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, absoluteHost: Option[String]) {
   def this(routesToScrape: JList[String], targetDirectory: File, absoluteHost: String) =
-    this(routesToScrape: Seq[String], targetDirectory, Option(absoluteHost))
+    this(routesToScrape.asScala, targetDirectory, Option(absoluteHost))
 
   lazy val additionalHeaders: Seq[(String, String)] =
     absoluteHost.map(HOST -> _).map(Seq(_)).getOrElse(Seq())
@@ -38,22 +40,20 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
 
   def simpleGetRequest(_path: String): RequestHeader = {
     new RequestHeader {
-      def headers       = new play.api.mvc.Headers((ACCEPT -> "*/*") +: additionalHeaders)
-      def id            = Random.nextInt
-      def method        = "GET"
-      def path          = _path
-      def queryString   = Map[String, Seq[String]]()
-      def remoteAddress = "0.0.0.0"
-      def secure        = false
-      def tags          = Map[String, String]()
-      def uri           = _path
-      def version       = "HTTP/1.1"
-      def clientCertificateChain = None
+      override val connection = RemoteConnection("0.0.0.0", false, None)
+      override val method     = "GET"
+      override val target     = RequestTarget(_path, _path, Map[String, Seq[String]]())
+      override val version    = "HTTP/1.1"
+      override val headers    = new play.api.mvc.Headers((ACCEPT -> "*/*") +: additionalHeaders)
+      override val attrs      = TypedMap(
+        new TypedEntry[Long](RequestAttrKey.Id, Random.nextInt),
+        new TypedEntry[Cell[Session]](RequestAttrKey.Session, Cell(new Session()))
+      )
     }
   }
 
   private def contextualizePath(app: Application)(requestedPath: String) =
-    app.configuration.getString("play.http.context")
+    app.configuration.get[Option[String]]("play.http.context")
       .map(context => s"$context$requestedPath".replaceAll("//", "/"))
       .getOrElse(requestedPath)
 

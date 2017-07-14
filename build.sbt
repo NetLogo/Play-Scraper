@@ -1,8 +1,8 @@
-lazy val playVersion = "2.5.6"
+lazy val playVersion = "2.6.1"
 
 lazy val sharedSettings = Seq(
   organization := "org.nlogo",
-  version      := "0.7.4",
+  version      := "0.7.5",
   isSnapshot   := true,
   resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
   licenses  += ("Public Domain", url("http://creativecommons.org/licenses/publicdomain/")),
@@ -39,10 +39,12 @@ lazy val playScrapeServer = project.in(file("play-scrape-server")).
   settings(sharedSettings).
   settings(
     name                := "play-scrape-server",
-    scalaVersion        := "2.11.8",
+    scalaVersion        := "2.12.2",
     scalacOptions       ++= Seq("-deprecation"),
-    libraryDependencies += "com.typesafe.play" %% "play" % playVersion)
-
+    libraryDependencies ++= Seq(
+      "com.typesafe.play" %% "play" % playVersion,
+      guice
+    ))
 
 lazy val scriptedSettings =
   ScriptedPlugin.scriptedSettings ++
