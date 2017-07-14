@@ -41,4 +41,3 @@ existsVersioned := {
     sys.error(s"None of the files in '${f.getParent}' (${f.getParentFile.list.mkString("'", "' and '", "'")}) have the form '<32 hex digits>-${f.getName}'")
   }
 }
-

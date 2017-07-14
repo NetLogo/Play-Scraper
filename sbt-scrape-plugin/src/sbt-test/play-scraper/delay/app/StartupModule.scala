@@ -2,10 +2,9 @@ import
   javax.inject.{ Inject, Singleton }
 
 import
-  play.api.cache.CacheApi
+  play.api.cache.SyncCacheApi
 
-import
-  play.api.libs.concurrent.Execution.Implicits._
+import scala.concurrent.ExecutionContext
 
 import
   com.google.inject.AbstractModule
@@ -14,7 +13,7 @@ import
   scala.concurrent.Future
 
 @Singleton
-class Startup @Inject() (cache: CacheApi) {
+class Startup @Inject() (cache: SyncCacheApi)(implicit ec: ExecutionContext) {
   Future {
     Thread.sleep(500)
     cache.set("worker.finished", "finished waiting")
