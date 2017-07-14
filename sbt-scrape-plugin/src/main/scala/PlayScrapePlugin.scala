@@ -19,6 +19,7 @@ import play.sbt.Play
 import play.sbt.run.PlayReload
 import play.sbt.PlayInternalKeys.{ playAllAssets, playAssetsClassLoader, playCommonClassloader, playCompileEverything,
   playDependencyClassLoader, playDependencyClasspath, playReload, playReloaderClassLoader, playReloaderClasspath }
+import play.runsupport.NamedURLClassLoader
 import play.runsupport.Reloader.{ CompileSuccess, CompileResult, CompileFailure }
 import play.runsupport.classloader.{ ApplicationClassLoaderProvider, DelegatingClassLoader }
 
@@ -114,7 +115,7 @@ object PlayScrapePlugin extends AutoPlugin {
           val confDirectory = (resourceDirectory in Compile).value.toURI.toURL
           val fullStageDirectory = stage.value
           val allJars = urls((fullStageDirectory / "lib" ** "*.jar").get)
-          playDependencyClassLoader.value("PlayDependencyClassLoader", (allJars :+ confDirectory).toArray, playCommonClassloader.value)
+          new NamedURLClassLoader("playDependencyClassloader", (allJars :+ confDirectory).toArray, playCommonClassloader.value)
         case CompileFailure(playException) => throw playException
       }
     },
