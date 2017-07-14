@@ -20,6 +20,7 @@ pipeline {
     stage('Build') {
       steps {
         library 'netlogo-shared'
+        sbt 'playScrapeServer/publishLocal'
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'play-scrape-test-deploy', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
           sbt 'playScrape/scripted'
         }
@@ -42,4 +43,3 @@ pipeline {
     }
   }
 }
-
