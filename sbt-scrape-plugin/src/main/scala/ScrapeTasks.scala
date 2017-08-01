@@ -41,7 +41,7 @@ object ScrapeTasks {
       applicationScraperClass)
 
     val applicationScraper = buildApplicationScraper(applicationScraperClass, routesToScrape, targetDirectory, absoluteURL)
-    
+
     ssApply.invoke(
       ssInstance,
       applicationDirectory,
@@ -54,9 +54,9 @@ object ScrapeTasks {
   // path desired: /assets/javascripts/....js
   // path in jar: /public/javascripts/....js
   // playAllAssets: (public/, file::path/to/public/main)
-  def scrapeAssets(playAssets: Seq[(String, File)], jarFile: File, targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
-    val (ssPathForAsset, ssInstance) = startServerMethod(loader, "pathForAsset", classOf[String])
-    val lookupAssetPath = ((s: String) => ssPathForAsset.invoke(ssInstance, s).asInstanceOf[String])
+  def scrapeAssets(playAssets: Seq[(String, File)], jarFile: File, applicationDirectory: File, targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
+    val (ssPathForAsset, ssInstance) = startServerMethod(loader, "pathForAsset", classOf[File], classOf[ClassLoader], classOf[String])
+    val lookupAssetPath = ((s: String) => ssPathForAsset.invoke(ssInstance, applicationDirectory, loader, s).asInstanceOf[String])
     val tempDirectory = IO.createTemporaryDirectory
     IO.unzip(jarFile, tempDirectory)
     val displayPath = playAssets.head._1 // this will typically be /public. Not sure how to deal with having more than one path

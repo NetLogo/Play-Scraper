@@ -124,7 +124,7 @@ object PlayScrapePlugin extends AutoPlugin {
       IO.delete(scrapeTarget.value)
       IO.createDirectory(scrapeTarget.value)
       val assetsJar = (stage.value / "lib" * "*-assets.jar").get.head
-      scrapeAssets(playAllAssets.value, assetsJar, scrapeTarget.value, scrapeLoader.value, customSettings)
+      scrapeAssets(playAllAssets.value, assetsJar, baseDirectory.value, scrapeTarget.value, scrapeLoader.value, customSettings)
       scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, scrapeDelay.value, customSettings, scrapeAbsoluteURL.value)
     })
 }
