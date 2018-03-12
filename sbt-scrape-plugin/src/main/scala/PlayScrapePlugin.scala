@@ -11,12 +11,18 @@ import java.io.File
 import java.net.URL
 import java.util.{ List => JList }
 
-import sbt.{ AutoPlugin, Def, IO, taskKey, settingKey, Project, Compile, State, Path }, Path._
-import sbt.Keys._
+import
+  sbt.{ AttributeKey, AutoPlugin, Compile, Def, fileToRichFile, io, Keys, Project,
+    Path, Resolver, settingKey, State, stringToOrganization, taskKey },
+    Path._,
+    Keys._,
+    io.{ FileFilter, IO, PathFinder, RichFile, syntax },
+      FileFilter.globFilter
 
 import play.core.Build
 import play.sbt.Play
 import play.sbt.run.PlayReload
+import play.sbt.PlayImport.PlayKeys.playPackageAssets
 import play.sbt.PlayInternalKeys.{ playAllAssets, playAssetsClassLoader, playCommonClassloader, playCompileEverything,
   playDependencyClassLoader, playDependencyClasspath, playReload, playReloaderClassLoader, playReloaderClasspath }
 import play.runsupport.NamedURLClassLoader
@@ -39,6 +45,7 @@ object PlayScrapePlugin extends AutoPlugin {
     val scrapeAbsoluteURL           = settingKey[Option[String]]("absolute URL to scrape against")
     val scrapePublishCredential     = settingKey[AWSCredentialsProvider]("scrape publication credential")
     val scrapePublishBucketID       = settingKey[Option[String]]("scrape publication bucket ID")
+    val scrapePublishRegion         = settingKey[Option[String]]("scrape publication region name")
     val scrapePublishDistributionID = settingKey[Option[String]]("scrape publication distribution ID")
   }
 
@@ -71,28 +78,28 @@ object PlayScrapePlugin extends AutoPlugin {
       new ProfileCredentialsProvider(name)
   }
 
-  import sbt._
-
   override val projectSettings = Seq(
     resolvers += Resolver.bintrayRepo("content/netlogo", "play-scraper"),
     allDependencies += "org.nlogo" %% "play-scrape-server" % {
       val plugins = buildStructure.value.units(thisProjectRef.value.build).unit.plugins.pluginData.classpath
       val module = plugins
-        .flatMap(_.get(AttributeKey[sbt.ModuleID]("moduleId")))
+        .flatMap(_.get(AttributeKey[sbt.ModuleID]("moduleID")))
         .filter(m => m.organization == "org.nlogo" && m.name == "play-scraper")
       module.map(_.revision).head
     },
-    scrapeTarget        := target.value / "play-scrape",
+    scrapeTarget        := (target.value: RichFile) / "play-scrape",
     scrapeUpload        := {
       val bucketID = scrapePublishBucketID.value
+      val streamsLog = streams.value.log
       if (bucketID.isEmpty) {
-        streams.value.log.warn("*** Warning: NO UPLOAD PERFORMED ***")
-        streams.value.log.warn("Skipping upload since scrapePublishBucketID not set")
+        streamsLog.warn("*** Warning: NO UPLOAD PERFORMED ***")
+        streamsLog.warn("Skipping upload since scrapePublishBucketID not set")
       } else {
         val bucket = bucketID.get
         val distributionID = scrapePublishDistributionID.value
         StaticSiteUploader.deploy(
           scrapePublishCredential.value,
+          scrapePublishRegion.value.getOrElse("us-east-1"),
           scrapeTarget.value,
           bucket,
           distributionID,
@@ -107,6 +114,7 @@ object PlayScrapePlugin extends AutoPlugin {
     cleanFiles          += scrapeTarget.value,
     scrapePublishCredential     := credentials.fromEnvironmentVariables,
     scrapePublishBucketID       := None,
+    scrapePublishRegion         := None,
     scrapePublishDistributionID := None,
     scrapeLoader        := {
       import Play._
@@ -114,7 +122,7 @@ object PlayScrapePlugin extends AutoPlugin {
         case CompileSuccess(sources, classpath) =>
           val confDirectory = (resourceDirectory in Compile).value.toURI.toURL
           val fullStageDirectory = stage.value
-          val allJars = urls((fullStageDirectory / "lib" ** "*.jar").get)
+          val allJars = urls((PathFinder(fullStageDirectory) / "lib" ** "*.jar").get)
           new NamedURLClassLoader("playDependencyClassloader", (allJars :+ confDirectory).toArray, playCommonClassloader.value)
         case CompileFailure(playException) => throw playException
       }
@@ -123,8 +131,8 @@ object PlayScrapePlugin extends AutoPlugin {
       val customSettings: Map[String, String] = if (scrapeContext.value == "") Map() else Map("play.http.context" -> scrapeContext.value)
       IO.delete(scrapeTarget.value)
       IO.createDirectory(scrapeTarget.value)
-      val assetsJar = (stage.value / "lib" * "*-assets.jar").get.head
-      scrapeAssets(playAllAssets.value, assetsJar, baseDirectory.value, scrapeTarget.value, scrapeLoader.value, customSettings)
+      val assetsToScrape = listAssetsToScrape(playAllAssets.value, playPackageAssets.value)
+      scrapeAssets(assetsToScrape, baseDirectory.value, scrapeTarget.value, scrapeLoader.value, customSettings)
       scrapeSpecifiedRoutes(baseDirectory.value, scrapeTarget.value, scrapeLoader.value, scrapeRoutes.value, scrapeDelay.value, customSettings, scrapeAbsoluteURL.value)
     })
 }

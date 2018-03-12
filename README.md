@@ -11,7 +11,7 @@ resolvers += Resolver.url(
     url("http://dl.bintray.com/content/netlogo/play-scraper"))(
         Resolver.ivyStylePatterns)
 
-addSbtPlugin("org.nlogo" % "play-scraper" % "0.7.4")
+addSbtPlugin("org.nlogo" % "play-scraper" % "0.8.0")
 ```
 
 In your `build.sbt`, add:
@@ -28,10 +28,12 @@ Note that version 0.7.0 is compatible only with Play 2.5. Versions of play earli
 To enable uploading, set the following keys:
 
 ```scala
-scrapePublishBucketID := "your-bucket"
+scrapePublishBucketID := Some("your-bucket")
 
-// this is optional, but if set the distribution will be invalidated on upload
-scrapePublishDistributionID := "your-cloudfront-distribution-id"
+scrapePublishRegion := Some("us-east-1")
+
+// this is optional. When set, the distribution will be invalidated on upload
+scrapePublishDistributionID := Some("your-cloudfront-distribution-id")
 ```
 
 As well as settings `scrapePublishCredentials` via one of the following methods:

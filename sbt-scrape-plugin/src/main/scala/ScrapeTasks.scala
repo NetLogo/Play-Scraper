@@ -7,9 +7,11 @@ import java.lang.reflect.Method
 import scala.collection.JavaConversions._
 
 import scala.language.postfixOps
+import scala.util.Try
 
-import sbt.{ Path, IO },
-  IO.{ copy => copyFiles },
+import sbt.{ fileToRichFile, io, Path },
+  io.{ CopyOptions, IO, Path => IOPath, PathFinder },
+    IO.{ copy => copyFiles },
   Path._
 
 object ScrapeTasks {
@@ -51,22 +53,36 @@ object ScrapeTasks {
       applicationScraper.asInstanceOf[java.lang.Object])
   }
 
+  def listAssetsToScrape(playAssets: Seq[(String, File)], jarFile: File): Seq[(File, String)] = {
+    val tempDirectory = IO.createTemporaryDirectory
+    IO.unzip(jarFile, tempDirectory)
+    // playAssets.head._1 will typically be "public/".
+    // We strip off the tailing slash, because that screws up PathFinder.
+    // Currently, we don't deal with having more than one path in playAssets.
+    // -- RG 3/12/18
+    val displayPath = playAssets.head._1.dropRight(1)
+    val assetsDir = tempDirectory / displayPath
+    val assetFiles = ((PathFinder(tempDirectory) / displayPath).allPaths).get
+    for {
+      assetFile    <- assetFiles
+      relativePath <- relativeTo(assetsDir)(assetFile)
+    } yield (assetFile, relativePath)
+  }
+
   // path desired: /assets/javascripts/....js
   // path in jar: /public/javascripts/....js
   // playAllAssets: (public/, file::path/to/public/main)
-  def scrapeAssets(playAssets: Seq[(String, File)], jarFile: File, applicationDirectory: File, targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
+  def scrapeAssets(assetsToScrape: Seq[(File, String)], applicationDirectory: File, targetDirectory: File, loader: ClassLoader, customSettings: Map[String, String]) = {
     val (ssPathForAsset, ssInstance) = startServerMethod(loader, "pathForAsset", classOf[File], classOf[ClassLoader], classOf[String])
-    val lookupAssetPath = ((s: String) => ssPathForAsset.invoke(ssInstance, applicationDirectory, loader, s).asInstanceOf[String])
-    val tempDirectory = IO.createTemporaryDirectory
-    IO.unzip(jarFile, tempDirectory)
-    val displayPath = playAssets.head._1 // this will typically be /public. Not sure how to deal with having more than one path
-    val allAssets = (tempDirectory / displayPath ***).get.map(assetFile => (tempDirectory / displayPath, assetFile))
+    def lookupAssetPath(s: String): Option[String] = {
+      Try(ssPathForAsset.invoke(ssInstance, applicationDirectory, loader, s).asInstanceOf[String]).toOption
+    }
     val filesToCopy =
-      allAssets.flatMap {
-        case (assetsDir, asset) =>
-          relativeTo(assetsDir)(asset).map(assetPath =>
-              (asset, targetDirectory / customSettings.getOrElse("play.http.context", "") / lookupAssetPath(assetPath)))
-      }
-    copyFiles(filesToCopy, overwrite=true)
+      for {
+        (asset, relativePath) <- assetsToScrape
+        assetPath <- lookupAssetPath(relativePath)
+        context = customSettings.getOrElse("play.http.context", "")
+      } yield (asset, targetDirectory / context / assetPath)
+    copyFiles(filesToCopy, CopyOptions().withOverwrite(true))
   }
 }
