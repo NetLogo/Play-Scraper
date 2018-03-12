@@ -1,16 +1,18 @@
 > scrapePlay
+$ sleep 10
 $ exists target/play-scrape
 $ exists target/play-scrape/assets
-> existsVersioned target/play-scrape/assets/javascripts/hello.js
-$ sleep 10
 $ exists target/play-scrape/index.html
+> existsVersioned target/play-scrape/assets/javascripts/hello.js
 > existsVersioned target/play-scrape/assets/images/favicon.png
 > checkIdenticalVersioned public/images/favicon.png target/play-scrape/assets/images/favicon.png
 # check that files that are removed from the project get removed from the scrape
-$ copy-file public/javascripts/hello.js public/javascripts/hello.js.bak
+$ copy-file public/javascripts/hello.js public/javascripts/hello-bak.js
 $ delete public/javascripts/hello.js
+$ sleep 3
 > scrapePlay
 -$ existsVersioned target/play-scrape/assets/javascripts/hello.js
+> existsVersioned target/play-scrape/assets/javascripts/hello-bak.js
 # reset
-$ copy-file public/javascripts/hello.js.bak public/javascripts/hello.js
-$ delete public/javascripts/hello.js.bak
+$ copy-file public/javascripts/hello-bak.js public/javascripts/hello.js
+$ delete public/javascripts/hello-bak.js

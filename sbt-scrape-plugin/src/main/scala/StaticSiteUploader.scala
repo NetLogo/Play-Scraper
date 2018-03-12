@@ -1,14 +1,15 @@
 package org.nlogo
 
 import
-  com.amazonaws.{ auth, services },
+  com.amazonaws.{ auth, regions, services },
     auth.{ AWSCredentialsProvider, profile },
       profile.ProfileCredentialsProvider,
+    regions.Regions,
     services.{ cloudfront, s3 },
-      s3.{ AmazonS3, AmazonS3Client, model => s3model },
+      s3.{ AmazonS3, AmazonS3Client, AmazonS3ClientBuilder, model => s3model },
         s3model.{ AccessControlList, GetObjectMetadataRequest, GroupGrantee, ObjectMetadata,
                   Permission, PutObjectRequest, RedirectRule, RoutingRule, RoutingRuleCondition },
-      cloudfront.{ AmazonCloudFrontClient, model => cfmodel },
+      cloudfront.{ AmazonCloudFrontClient, AmazonCloudFrontClientBuilder, model => cfmodel },
         cfmodel.{ CreateInvalidationRequest, InvalidationBatch, Paths }
 
 import
@@ -19,7 +20,7 @@ import
 
 import
   scala.{ collection, concurrent, util },
-    collection.JavaConversions._,
+    collection.JavaConverters._,
     concurrent.{ Await, Future, ExecutionContext, duration },
       ExecutionContext.Implicits.global,
       duration.Duration,
@@ -29,6 +30,7 @@ import
 object StaticSiteUploader {
   def deploy(
     credential:      AWSCredentialsProvider,
+    regionName:      String,
     targetDirectory: File,
     bucketId:        String,
     distributionId:  Option[String],
@@ -38,6 +40,8 @@ object StaticSiteUploader {
       recursiveFileEnumeration(targetDirectory)
         .filter(excludeFiles)
 
+    val region = Regions.fromName(regionName)
+
     lazy val fileKeys = allFiles.map(fileToKey(targetDirectory))
 
     lazy val metadataRequests =
@@ -46,13 +50,17 @@ object StaticSiteUploader {
     lazy val putRequests =
       (fileKeys zip allFiles).map((putRequest(bucketId) _).tupled)
 
-    val client = new AmazonS3Client(credential)
+    val client: AmazonS3Client =
+      AmazonS3ClientBuilder.standard()
+        .withRegion(region)
+        .withCredentials(credential)
+        .build().asInstanceOf[AmazonS3Client]
 
     upload(metadataRequests zip putRequests, client)
 
     addRedirects(bucketId, fileKeys, redirectHost, client)
 
-    distributionId.foreach(id => invalidateDistribution(id, credential))
+    distributionId.foreach(id => invalidateDistribution(id, region, credential))
   }
 
   def upload(requests: Seq[(GetObjectMetadataRequest, PutObjectRequest)], client: AmazonS3Client) = {
@@ -80,7 +88,7 @@ object StaticSiteUploader {
               .withCondition(new RoutingRuleCondition().withKeyPrefixEquals(s"$k/"))
               .withRedirect(redirectToAppropriateHost(new RedirectRule().withReplaceKeyWith(k))))
       val currentConfiguration = client.getBucketWebsiteConfiguration(bucketId)
-      client.setBucketWebsiteConfiguration(bucketId, currentConfiguration.withRoutingRules(routingRules))
+      client.setBucketWebsiteConfiguration(bucketId, currentConfiguration.withRoutingRules(routingRules.asJava))
     } catch {
       case e: Throwable =>
         println("failed to add redirects:")
@@ -93,7 +101,7 @@ object StaticSiteUploader {
     for {
       metadata <- currentObjectMetadata
     } yield
-      if (metadata.getUserMetadata.getOrElse("sha1", "") != request.getMetadata.getUserMetadata.get("sha1"))
+      if (metadata.getUserMetadata.asScala.getOrElse("sha1", "") != request.getMetadata.getUserMetadata.get("sha1"))
         Try { client.putObject(request) }
       else Try { () }
 
@@ -102,8 +110,11 @@ object StaticSiteUploader {
       case e: Throwable => new ObjectMetadata()
     }
 
-  def invalidateDistribution(distributionId: String, credentialsProvider: AWSCredentialsProvider) = {
-    val cfc = new AmazonCloudFrontClient(credentialsProvider)
+  def invalidateDistribution(distributionId: String, region: Regions, credentialsProvider: AWSCredentialsProvider) = {
+    val cfc = AmazonCloudFrontClientBuilder.standard()
+      .withCredentials(credentialsProvider)
+      .withRegion(region)
+      .asInstanceOf[AmazonCloudFrontClient]
     val paths = new Paths().withItems("/*").withQuantity(1)
     val ib = new InvalidationBatch(paths, java.lang.System.currentTimeMillis.toString) // the timestring must be unique
     val cir = new CreateInvalidationRequest(distributionId, ib)
