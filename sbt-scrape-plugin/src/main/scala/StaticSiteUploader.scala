@@ -114,7 +114,7 @@ object StaticSiteUploader {
     val cfc = AmazonCloudFrontClientBuilder.standard()
       .withCredentials(credentialsProvider)
       .withRegion(region)
-      .asInstanceOf[AmazonCloudFrontClient]
+      .build().asInstanceOf[AmazonCloudFrontClient]
     val paths = new Paths().withItems("/*").withQuantity(1)
     val ib = new InvalidationBatch(paths, java.lang.System.currentTimeMillis.toString) // the timestring must be unique
     val cir = new CreateInvalidationRequest(distributionId, ib)
