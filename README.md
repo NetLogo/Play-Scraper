@@ -5,11 +5,9 @@ An SBT plugin to enable Play sites to be served statically.
 ## How Do I Use It?
 
 To use, add the following to your `plugins.sbt`
+
 ```scala
-resolvers += Resolver.url(
-  "play-scraper",
-    url("http://dl.bintray.com/content/netlogo/play-scraper"))(
-        Resolver.ivyStylePatterns)
+resolvers += "play-scraper" at "https://dl.cloudsmith.io/public/netlogo/play-scraper/maven/"
 
 addSbtPlugin("org.nlogo" % "play-scraper" % "0.8.0")
 ```
@@ -60,3 +58,7 @@ Use sbt. Test it using the `scripted` task.
 [![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png)](http://creativecommons.org/publicdomain/zero/1.0/)
 
 The Play Scraper plugin is in the public domain.  To the extent possible under law, Uri Wilensky has waived all copyright and related or neighboring rights.
+
+[![Hosted By: Cloudsmith](https://img.shields.io/badge/OSS%20hosting%20by-cloudsmith-blue?logo=cloudsmith&style=flat-square)](https://cloudsmith.com)
+
+Package repository hosting is graciously provided by [Cloudsmith](https://cloudsmith.com).

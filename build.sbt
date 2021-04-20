@@ -1,13 +1,11 @@
 lazy val playVersion = "2.6.12"
 
 lazy val sharedSettings = Seq(
-  organization := "org.nlogo",
-  version      := "0.8.1",
-  isSnapshot   := true,
-  resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
-  licenses  += ("Public Domain", url("http://creativecommons.org/licenses/publicdomain/")),
-  bintrayRepository   := "play-scraper",
-  bintrayOrganization := Some("netlogo")
+    organization := "org.nlogo"
+  , version      := "0.8.1"
+  , isSnapshot   := true
+  , licenses     += ("Creative Commons Zero v1.0 Universal Public Domain Dedication", url("https://creativecommons.org/publicdomain/zero/1.0/"))
+  , publishTo    := { Some("Cloudsmith API" at "https://maven.cloudsmith.io/netlogo/play-scraper/") }
 )
 
 lazy val root = project.in(file(".")).
