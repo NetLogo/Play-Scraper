@@ -4,42 +4,42 @@ pipeline {
 
   agent any
 
-  environment {
-    CREDENTIALS_FROM_ENVIRONMENT = 'true'
-  }
-
   stages {
-    stage('Start') {
-      steps {
-        library 'netlogo-shared'
-        sendNotifications('NetLogo/Play-Scraper', 'STARTED')
-      }
-    }
-
 
     stage('Build') {
       steps {
-        library 'netlogo-shared'
-        sbt 'playScrapeServer/publishLocal'
+        sh "sbt -Dsbt.log.noformat=true \"playScrapeServer/publishLocal\""
+      }
+    }
+
+    stage('Test') {
+      steps {
+        sh "sbt -Dsbt.log.noformat=true \"playScrape/scripted play-scraper/absolute\" \"playScrape/scripted play-scraper/context\" \"playScrape/scripted play-scraper/delay\" \"playScrape/scripted play-scraper/simple\" \"playScrape/scripted play-scraper/versioned\""
+      }
+    }
+
+    stage('Test Upload') {
+      steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'play-scrape-test-deploy', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-          sbt 'playScrape/scripted'
+          sh "sbt -Dsbt.log.noformat=true \"playScrape/scripted play-scraper/upload\""
         }
       }
     }
+
   }
 
   post {
     failure {
       library 'netlogo-shared'
-        sendNotifications('NetLogo/Play-Scraper', 'FAILURE')
+      sendNotifications('NetLogo/Play-Scraper', 'FAILURE')
     }
     success {
       library 'netlogo-shared'
-        sendNotifications('NetLogo/Play-Scraper', 'SUCCESS')
+      sendNotifications('NetLogo/Play-Scraper', 'SUCCESS')
     }
     unstable {
       library 'netlogo-shared'
-        sendNotifications('NetLogo/Play-Scraper', 'UNSTABLE')
+      sendNotifications('NetLogo/Play-Scraper', 'UNSTABLE')
     }
   }
 }
