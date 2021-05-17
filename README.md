@@ -9,7 +9,7 @@ To use, add the following to your `plugins.sbt`
 ```scala
 resolvers += "play-scraper" at "https://dl.cloudsmith.io/public/netlogo/play-scraper/maven/"
 
-addSbtPlugin("org.nlogo" % "play-scraper" % "0.8.0")
+addSbtPlugin("org.nlogo" % "play-scraper" % "0.8.1")
 ```
 
 In your `build.sbt`, add:
