@@ -10,11 +10,8 @@ scalaVersion := "2.12.4"
 
 scrapeRoutes += "/other"
 
-if (System.getenv("CREDENTIALS_FROM_ENVIRONMENT") == "true")
-  scrapePublishCredential := fromEnvironmentVariables
-else
-  scrapePublishCredential := fromCredentialsProfile("play-scrape-tester")
+scrapePublishCredential := fromEnvironmentVariables
 
-scrapePublishBucketID := Some("play-scrape-test")
+scrapePublishBucketID := Some("play-scraper-test")
 
-scrapeAbsoluteURL := Some("play-scrape-test.s3-website-us-east-1.amazonaws.com")
+scrapeAbsoluteURL := Some("play-scraper-test.s3-website-us-east-1.amazonaws.com")
