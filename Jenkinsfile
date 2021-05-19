@@ -4,6 +4,10 @@ pipeline {
 
   agent any
 
+  environment {
+    CREDENTIALS_FROM_ENVIRONMENT = 'true'
+  }
+
   stages {
 
     stage('Build') {
