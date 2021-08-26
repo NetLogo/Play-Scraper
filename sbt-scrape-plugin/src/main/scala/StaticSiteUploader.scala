@@ -125,7 +125,9 @@ object StaticSiteUploader {
 
   def versionMetadata(f: File) = {
     val md = new ObjectMetadata()
-    val computedSHA1 = DigestUtils.sha1Hex(new FileInputStream(f))
+    val is = new FileInputStream(f)
+    val computedSHA1 = DigestUtils.sha1Hex(is)
+    is.close()
     md.addUserMetadata("sha1", computedSHA1)
     md
   }
