@@ -7,12 +7,11 @@ $ exists target/play-scrape/index.html
 # Check basic upload functionality
 > scrapeUpload
 > testSleep 5
-> checkPublicUpload http://play-scrape-test.s3-website-us-east-1.amazonaws.com/ index.html
+> checkPublicUpload http://play-scraper-test.s3-website-us-east-1.amazonaws.com/ index.html
 # Check that re-uploading only changes changed files
 > scrapeUpload
 > testSleep 5
-> checkUploadedMoreThan 7 http://play-scrape-test.s3-website-us-east-1.amazonaws.com/
+> checkUploadedMoreThan 7 http://play-scraper-test.s3-website-us-east-1.amazonaws.com/
 # Check that redirects work for pages with no extensions
-> checkPublicUpload http://play-scrape-test.s3-website-us-east-1.amazonaws.com/other other
-> checkPublicUpload http://play-scrape-test.s3-website-us-east-1.amazonaws.com/other/ other
-
+> checkPublicUpload http://play-scraper-test.s3-website-us-east-1.amazonaws.com/other other
+> checkPublicUpload http://play-scraper-test.s3-website-us-east-1.amazonaws.com/other/ other
