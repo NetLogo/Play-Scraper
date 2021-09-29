@@ -82,7 +82,7 @@ object StaticSiteUploader {
       val redirectToAppropriateHost: RedirectRule => RedirectRule =
         redirectHost.map(host => (r: RedirectRule) => r.withHostName(host)).getOrElse(identity _)
       val routingRules = fileKeys
-        .filter(! _.contains("."))
+        .filter(k => !k.contains("/") && !k.contains("."))
         .map(k =>
             new RoutingRule()
               .withCondition(new RoutingRuleCondition().withKeyPrefixEquals(s"$k/"))
