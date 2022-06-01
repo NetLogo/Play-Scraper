@@ -6,6 +6,8 @@ pipeline {
 
   environment {
     CREDENTIALS_FROM_ENVIRONMENT = 'true'
+    JAVA_HOME="${tool 'Liberica OpenJDK 8u332'}"
+    PATH="${env.JAVA_HOME}/bin:${env.PATH}"
   }
 
   stages {
