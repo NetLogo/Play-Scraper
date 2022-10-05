@@ -1,6 +1,7 @@
 package org.nlogo
 
 import akka.stream.scaladsl.{ FileIO, Sink }
+import akka.stream.IOResult
 import akka.util.ByteString
 
 import java.io.{ File, FileOutputStream, OutputStream }
@@ -19,8 +20,8 @@ import scala.util.Try
 import scala.util.Random
 import scala.collection.JavaConverters._
 
-import scala.concurrent.{ ExecutionContext, Future },
-  ExecutionContext.Implicits.global
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, absoluteHost: Option[String]) {
   def this(routesToScrape: JList[String], targetDirectory: File, absoluteHost: String) =
@@ -29,12 +30,12 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
   lazy val additionalHeaders: Seq[(String, String)] =
     absoluteHost.map(HOST -> _).map(Seq(_)).getOrElse(Seq())
 
-  def scrape(app: Application): Future[Seq[Unit]] = {
+  def scrape(app: Application): Future[Seq[IOResult]] = {
     val contextualizedRoutes = routesToScrape.map(contextualizePath(app))
     Future.traverse(contextualizedRoutes)(scrapeRoute(app, targetDirectory))
   }
 
-  def scrapeRoute(app: Application, targetDirectory: File)(path: String): Future[Unit] = {
+  def scrapeRoute(app: Application, targetDirectory: File)(path: String): Future[IOResult] = {
     renderPage(app, path, pathToFile(targetDirectory.getPath, path))
   }
 
@@ -57,13 +58,13 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
       .map(context => s"$context$requestedPath".replaceAll("//", "/"))
       .getOrElse(requestedPath)
 
-  private def renderPage(app: Application, path: String, file: File): Future[Unit] = {
+  private def renderPage(app: Application, path: String, file: File): Future[IOResult] = {
     val req = simpleGetRequest(path)
     val (_, handler) = app.requestHandler.handlerForRequest(req)
     val action = handler.asInstanceOf[EssentialAction]
     val fileWritingIteratee = FileIO.toPath(file.toPath)
     implicit val materializer = app.materializer
-    action(req).run().map(_.body.dataStream.runWith(fileWritingIteratee))
+    action(req).run().flatMap(_.body.dataStream.runWith(fileWritingIteratee))
   }
 
   private def pathToFile(parentDirPath: String, path: String): File = {

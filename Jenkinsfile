@@ -6,7 +6,7 @@ pipeline {
 
   environment {
     CREDENTIALS_FROM_ENVIRONMENT = 'true'
-    JAVA_HOME="${tool 'Liberica OpenJDK 8u332'}"
+    JAVA_HOME="${tool 'Liberica OpenJDK 17.0.4.1'}"
     PATH="${env.JAVA_HOME}/bin:${env.PATH}"
   }
 

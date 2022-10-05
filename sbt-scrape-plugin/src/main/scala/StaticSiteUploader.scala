@@ -100,10 +100,15 @@ object StaticSiteUploader {
   def attemptPut(client: AmazonS3Client, request: PutObjectRequest)(currentObjectMetadata: Try[ObjectMetadata]): Try[Unit] =
     for {
       metadata <- currentObjectMetadata
-    } yield
-      if (metadata.getUserMetadata.asScala.getOrElse("sha1", "") != request.getMetadata.getUserMetadata.get("sha1"))
+    } yield {
+      if (metadata.getUserMetadata.asScala.getOrElse("sha1", "") != request.getMetadata.getUserMetadata.get("sha1")) {
         Try { client.putObject(request) }
-      else Try { () }
+        ()
+      } else {
+        Try { () }
+        ()
+      }
+    }
 
   def attemptMetadata(client: AmazonS3Client, request: GetObjectMetadataRequest): Try[ObjectMetadata] =
     Try { client.getObjectMetadata(request) }.recover {

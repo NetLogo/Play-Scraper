@@ -63,10 +63,10 @@ object ScrapeTasks {
     val displayPath = playAssets.head._1.dropRight(1)
     val assetsDir = tempDirectory / displayPath
     val assetFiles = ((PathFinder(tempDirectory) / displayPath).allPaths).get
-    for {
-      assetFile    <- assetFiles
-      relativePath <- relativeTo(assetsDir)(assetFile)
-    } yield (assetFile, relativePath)
+    assetFiles.map( (assetFile) => {
+      val relativePath = relativeTo(assetsDir)(assetFile).get
+      (assetFile, relativePath)
+    })
   }
 
   // path desired: /assets/javascripts/....js

@@ -1,3 +1,4 @@
 target/
 *.swp
-/project/project
+project/project/
+.bsp/

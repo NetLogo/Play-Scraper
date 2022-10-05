@@ -13,9 +13,9 @@ import play.api.http.{ HttpConfiguration, DefaultFileMimeTypes }
 import scala.util.{ Random, Success, Failure }
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
-import scala.concurrent.{ duration, ExecutionContext, Await, Future },
-  ExecutionContext.Implicits.global,
-  duration.Duration
+import scala.concurrent.{ duration, ExecutionContext, Await, Future }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
 object StartServer {
   def apply(
@@ -27,7 +27,7 @@ object StartServer {
       val extraConfig = Configuration.from(HashMap(additionalConfig.asScala.toSeq: _*))
       val app = new GuiceApplicationBuilder()
         .load((env, conf) => GuiceableModule.loadModules(env, conf))
-        .loadConfig(env => Configuration.load(env) ++ extraConfig)
+        .loadConfig(env => extraConfig.withFallback(Configuration.load(env)))
         .in(baseDirectory)
         .in(loader)
         .in(Mode.Prod)
@@ -35,6 +35,7 @@ object StartServer {
       Play.start(app)
       Thread.sleep(Int.unbox(scrapeDelay) * 1000)
       Await.ready(scraper.scrape(app), Duration.Inf)
+      ()
     }
 
   def pathForAsset(baseDirectory: File, loader: ClassLoader, assetName: String): String = {
