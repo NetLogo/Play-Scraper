@@ -78,6 +78,7 @@ object StaticSiteUploader {
   }
 
   def addRedirects(bucketId: String, fileKeys: Seq[String], redirectHost: Option[String], client: AmazonS3Client) = {
+    val realBucketId = bucketId.split("/")(0)
     try {
       val redirectToAppropriateHost: RedirectRule => RedirectRule =
         redirectHost.map(host => (r: RedirectRule) => r.withHostName(host)).getOrElse(identity _)
@@ -87,8 +88,8 @@ object StaticSiteUploader {
             new RoutingRule()
               .withCondition(new RoutingRuleCondition().withKeyPrefixEquals(s"$k/"))
               .withRedirect(redirectToAppropriateHost(new RedirectRule().withReplaceKeyWith(k))))
-      val currentConfiguration = client.getBucketWebsiteConfiguration(bucketId)
-      client.setBucketWebsiteConfiguration(bucketId, currentConfiguration.withRoutingRules(routingRules.asJava))
+      val currentConfiguration = client.getBucketWebsiteConfiguration(realBucketId)
+      client.setBucketWebsiteConfiguration(realBucketId, currentConfiguration.withRoutingRules(routingRules.asJava))
     } catch {
       case e: Throwable =>
         println("failed to add redirects:")
