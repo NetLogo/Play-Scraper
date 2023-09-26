@@ -1,0 +1,48 @@
+name: build-and-test
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: 'us-east-1'
+  AWS_ROLE_TO_ASSUME: 'arn:aws:iam::922513866616:role/Play-Scraper-AWS-Testing'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'liberica'
+          java-version: '17.0'
+          java-package: jdk+fx
+
+      - name: Configure AWS Credentials
+        id: creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          role-session-name: 'GitHub-Actions-Play-Scraper-AWS-Testing'
+          output-credentials: true
+
+      - name: Verify AWS Credentials
+        run: |
+          aws sts get-caller-identity
+
+      - name: Build and Run Scripted Tests
+        env:
+          CREDENTIALS_FROM_ENVIRONMENT: 'true'
+          AWS_ACCESS_KEY_ID: ${{ steps.creds.outputs.aws-access-key-id }}
+          AWS_SECRET_KEY: ${{ steps.creds.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.creds.outputs.aws-session-token }}
+        run: |
+          sbt -v playScrapeServer/publishLocal
+          sbt -v playScrape/scripted
