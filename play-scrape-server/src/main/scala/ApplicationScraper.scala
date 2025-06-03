@@ -18,14 +18,14 @@ import play.api.libs.typedmap.{ TypedMap, TypedEntry }
 
 import scala.util.Try
 import scala.util.Random
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, absoluteHost: Option[String]) {
   def this(routesToScrape: JList[String], targetDirectory: File, absoluteHost: String) =
-    this(routesToScrape.asScala, targetDirectory, Option(absoluteHost))
+    this(routesToScrape.asScala.toSeq, targetDirectory, Option(absoluteHost))
 
   lazy val additionalHeaders: Seq[(String, String)] =
     absoluteHost.map(HOST -> _).map(Seq(_)).getOrElse(Seq())
@@ -47,7 +47,7 @@ class ApplicationScraper(routesToScrape: Seq[String], targetDirectory: File, abs
       override val version    = "HTTP/1.1"
       override val headers    = new play.api.mvc.Headers((ACCEPT -> "*/*") +: additionalHeaders)
       override val attrs      = TypedMap(
-        new TypedEntry[Long](RequestAttrKey.Id, Random.nextInt),
+        new TypedEntry[Long](RequestAttrKey.Id, Random.nextInt()),
         new TypedEntry[Cell[Session]](RequestAttrKey.Session, Cell(new Session()))
       )
     }

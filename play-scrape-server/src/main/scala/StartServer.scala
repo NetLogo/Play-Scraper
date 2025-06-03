@@ -11,7 +11,7 @@ import play.api.inject.guice.GuiceableModule
 import play.api.http.{ HttpConfiguration, DefaultFileMimeTypes }
 
 import scala.util.{ Random, Success, Failure }
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable.HashMap
 import scala.concurrent.{ duration, ExecutionContext, Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -31,7 +31,7 @@ object StartServer {
         .in(baseDirectory)
         .in(loader)
         .in(Mode.Prod)
-        .build
+        .build()
       Play.start(app)
       Thread.sleep(Int.unbox(scrapeDelay) * 1000)
       Await.ready(scraper.scrape(app), Duration.Inf)

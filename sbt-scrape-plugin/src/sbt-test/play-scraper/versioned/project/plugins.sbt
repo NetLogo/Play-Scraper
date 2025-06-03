@@ -1,6 +1,6 @@
 resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-digest" % "1.1.3")
+addSbtPlugin("com.github.sbt" % "sbt-digest" % "2.1.0")
 
 def getPluginVersion(key: String) = {
   val version = System.getProperty(key)
