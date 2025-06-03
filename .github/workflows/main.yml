@@ -24,6 +24,8 @@ jobs:
           java-version: '17.0'
           java-package: jdk+fx
 
+      - uses: sbt/setup-sbt@v1
+
       - name: Configure AWS Credentials
         id: creds
         uses: aws-actions/configure-aws-credentials@v4
