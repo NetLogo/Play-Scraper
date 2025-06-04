@@ -4,15 +4,19 @@ import
   javax.inject.Inject
 
 import
-  play.api._,
+  play.api.{ cache, mvc },
     cache.SyncCacheApi,
-    mvc._
+    mvc.{ Action, BaseController, ControllerComponents }
 
-class Application @Inject() (cache: SyncCacheApi) extends InjectedController {
+import scala.reflect.ClassTag
 
-  def index = Action {
+class Application @Inject() (cache: SyncCacheApi, val controllerComponents: ControllerComponents) extends BaseController {
+
+  def index = Action({
     Thread.sleep(1000)
-    Ok(views.html.index(cache.get("worker.finished").getOrElse("startup worker not finished!")))
-  }
+    val g = cache.get[String]("worker.finished")
+    val m = g.getOrElse("startup worker not finished!")
+    Ok(views.html.index(m))
+  })
 
 }

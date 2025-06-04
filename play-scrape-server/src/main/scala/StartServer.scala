@@ -24,7 +24,7 @@ object StartServer {
     additionalConfig: JMap[String, String],
     scrapeDelay: java.lang.Integer,
     scraper: ApplicationScraper): Unit = {
-      val extraConfig = Configuration.from(HashMap(additionalConfig.asScala.toSeq: _*))
+      val extraConfig = Configuration.from(HashMap(additionalConfig.asScala.toSeq*))
       val app = new GuiceApplicationBuilder()
         .load((env, conf) => GuiceableModule.loadModules(env, conf))
         .loadConfig(env => extraConfig.withFallback(Configuration.load(env)))
@@ -42,7 +42,7 @@ object StartServer {
     // begin by configuring the StaticAssetsMetadata
     // reflective because this is a private[controllers] object / method
     val assetsMetadataClass = Class.forName("controllers.StaticAssetsMetadata$")
-    val staticAssetsMetadataSetter = assetsMetadataClass.getDeclaredMethod("instance_$eq", classOf[Option[_]])
+    val staticAssetsMetadataSetter = assetsMetadataClass.getDeclaredMethod("instance_$eq", classOf[Option[?]])
     val assetsMetadataObject = assetsMetadataClass.getDeclaredField("MODULE$").get(assetsMetadataClass)
     val env = Environment(baseDirectory, loader, Mode.Prod)
     val config = Configuration.load(env)

@@ -3,6 +3,10 @@ resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releas
 addSbtPlugin("com.github.sbt" % "sbt-digest" % "2.1.0")
 
 def getPluginVersion(key: String) = {
+  // uncomment with current values to run without scripted
+  // System.setProperty("play.version", "2.9.7")
+  // System.setProperty("plugin.version", "1.2.0")
+
   val version = System.getProperty(key)
   if (version == null) {
     throw new RuntimeException(s"""|The system property '$key' is not defined.
@@ -11,7 +15,5 @@ def getPluginVersion(key: String) = {
   version
 }
 
-{
-  addSbtPlugin("com.typesafe.play" % "sbt-plugin" % getPluginVersion("play.version"))
-  addSbtPlugin("org.nlogo" %% "play-scraper" % getPluginVersion("plugin.version"))
-}
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % getPluginVersion("play.version"))
+addSbtPlugin("org.nlogo" %% "play-scraper" % getPluginVersion("plugin.version"))
