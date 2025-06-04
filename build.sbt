@@ -5,7 +5,7 @@ lazy val sharedSettings = Seq(
 , version      := "1.2.0"
 , isSnapshot   := true
 , licenses     += ("Creative Commons Zero v1.0 Universal Public Domain Dedication", url("https://creativecommons.org/publicdomain/zero/1.0/"))
-, publishTo    := { Some("Cloudsmith API" at "https://maven.cloudsmith.io/netlogo/play-scraper/") }
+, publishTo    := { Some("Cloudsmith API" at "https://maven.cloudsmith.io/netlogo/play-scraper-workaround/") }
 , scalacOptions ++= Seq(
   "-encoding", "UTF-8",
   "-deprecation",
