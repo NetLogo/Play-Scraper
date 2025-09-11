@@ -15,3 +15,6 @@ $ exists target/play-scrape/index.html
 # Check that redirects work for pages with no extensions
 > checkPublicUpload http://play-scraper-test.s3-website-us-east-1.amazonaws.com/other other
 > checkPublicUpload http://play-scraper-test.s3-website-us-east-1.amazonaws.com/other/ other
+> set scrapeForceUpload := true
+> scrapeUpload
+> testSleep 5

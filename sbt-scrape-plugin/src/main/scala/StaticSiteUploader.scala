@@ -34,7 +34,8 @@ object StaticSiteUploader {
     targetDirectory: File,
     bucketId:        String,
     distributionId:  Option[String],
-    redirectHost:    Option[String]
+    redirectHost:    Option[String],
+    forceUpload:     Boolean
   ) = {
     lazy val allFiles =
       recursiveFileEnumeration(targetDirectory)
@@ -56,18 +57,18 @@ object StaticSiteUploader {
         .withCredentials(credential)
         .build().asInstanceOf[AmazonS3Client]
 
-    upload(metadataRequests zip putRequests, client)
+    upload(metadataRequests zip putRequests, client, forceUpload)
 
     addRedirects(bucketId, fileKeys, redirectHost, client)
 
     distributionId.foreach(id => invalidateDistribution(id, region, credential))
   }
 
-  def upload(requests: Seq[(GetObjectMetadataRequest, PutObjectRequest)], client: AmazonS3Client) = {
+  def upload(requests: Seq[(GetObjectMetadataRequest, PutObjectRequest)], client: AmazonS3Client, forceUpload: Boolean) = {
     val d = Duration("30 minutes")
     println("beginning upload")
     val futureRequests = requests.map {
-      case (mdr, pr) => Future { attemptPut(client, pr)(attemptMetadata(client, mdr)) }
+      case (mdr, pr) => Future { attemptPut(client, pr, forceUpload)(attemptMetadata(client, mdr)) }
     }
     val sequencedRequests = Future.sequence(futureRequests)
     val putResults = Await.result(sequencedRequests, d)
@@ -98,11 +99,11 @@ object StaticSiteUploader {
     }
   }
 
-  def attemptPut(client: AmazonS3Client, request: PutObjectRequest)(currentObjectMetadata: Try[ObjectMetadata]): Try[Unit] =
+  def attemptPut(client: AmazonS3Client, request: PutObjectRequest, forceUpload: Boolean)(currentObjectMetadata: Try[ObjectMetadata]): Try[Unit] =
     for {
       metadata <- currentObjectMetadata
     } yield {
-      if (metadata.getUserMetadata.asScala.getOrElse("sha1", "") != request.getMetadata.getUserMetadata.get("sha1")) {
+      if (forceUpload || metadata.getUserMetadata.asScala.getOrElse("sha1", "") != request.getMetadata.getUserMetadata.get("sha1")) {
         Try { client.putObject(request) }
         ()
       } else {

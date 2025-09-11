@@ -61,6 +61,7 @@ object PlayScrapePlugin extends AutoPlugin {
     val scrapeLoader                = taskKey[ClassLoader]("classLoader to use when scraping play")
     val scrapeContext               = settingKey[String]("subdirectory in which to put generated files")
     val scrapeTarget                = settingKey[File]("directory to scrape static site into")
+    val scrapeForceUpload           = settingKey[Boolean]("re-upload files even when they have not changed from a prior upload")
     val scrapeRoutes                = settingKey[Seq[String]]("routes to be scraped")
     val scrapeAbsoluteURL           = settingKey[Option[String]]("absolute URL to scrape against")
     val scrapePublishCredential     = settingKey[AWSCredentialsProvider]("scrape publication credential")
@@ -97,6 +98,7 @@ object PlayScrapePlugin extends AutoPlugin {
       module.map(_.revision).head
     },
     scrapeTarget := (target.value: RichFile) / "play-scrape",
+    scrapeForceUpload := false,
     scrapeUpload := {
       val bucketID   = scrapePublishBucketID.value
       val streamsLog = streams.value.log
@@ -112,7 +114,8 @@ object PlayScrapePlugin extends AutoPlugin {
           scrapeTarget.value,
           bucket,
           distributionID,
-          scrapeAbsoluteURL.value
+          scrapeAbsoluteURL.value,
+          scrapeForceUpload.value
         )
       }
     },
