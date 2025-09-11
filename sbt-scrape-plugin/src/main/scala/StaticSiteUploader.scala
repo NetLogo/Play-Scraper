@@ -165,9 +165,17 @@ object StaticSiteUploader {
 
   def putRequest(bucketName: String)(key: String, f: File): PutObjectRequest = {
     val pr = new PutObjectRequest(bucketName, key, f)
-    if (f.getName.endsWith("html") || ! f.getName.contains('.'))
-      pr.withMetadata(htmlMetadata(versionMetadata(f))).withAccessControlList(publiclyReadable)
-    else
-      pr.withMetadata(versionMetadata(f)).withAccessControlList(publiclyReadable)
+    val md = if (f.getName.endsWith("html") || ! f.getName.contains('.')) {
+      htmlMetadata(versionMetadata(f))
+    } else {
+      versionMetadata(f)
+    }
+    // In theory [`no-cache` would be the directive that we
+    // want](https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching#validation), but I guess some browsers treat that
+    // as `no-store` - meaning no caching is allowed, which isn't correct.  I don't want to risk anyone re-downloading
+    // everything on every load, so we go with this (hopefully) equivalent directive combination.  -Jeremy B September
+    // 2025
+    md.setCacheControl("max-age=0, must-revalidate")
+    pr.withMetadata(md).withAccessControlList(publiclyReadable)
   }
 }
